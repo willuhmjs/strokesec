@@ -170,16 +170,19 @@
         }
 
         inputField.addEventListener('keydown', (e) => {
-            // Clear status message when user starts typing a new attempt
-            if (rawEvents.length === 0 && Object.keys(pressTimes).length === 0) {
-                 statusMessage.style.display = 'none';
+            // Clear status message ONLY when user starts typing a valid key for a new attempt
+            // We ignore Enter here to prevent the status from disappearing immediately if the user holds Enter
+            if (rawEvents.length === 0 && Object.keys(pressTimes).length === 0 && e.key !== 'Enter') {
+                 // Reset status visibility (controlled by CSS class .status { display: none })
                  statusMessage.className = 'status';
+                 statusMessage.style.display = '';
             }
             const now = performance.now() / 1000;
             
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 resetAttempt();
-                statusMessage.style.display = 'none';
+                statusMessage.className = 'status'; // Hide via CSS
+                statusMessage.style.display = '';
                 return;
             }
 
@@ -353,6 +356,7 @@
         function showStatus(msg, type) {
             statusMessage.textContent = msg;
             statusMessage.className = `status ${type}`;
+            statusMessage.style.display = ''; // Clear inline style to let CSS class take effect
         }
     </script>
 </body>

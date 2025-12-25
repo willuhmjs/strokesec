@@ -1,68 +1,28 @@
 """
 Batch verification script for external user data against the trained authentication model.
 """
-import os
 import sys
-import pickle
 import argparse
 import pandas as pd
 import numpy as np
-from config import MODEL_FILE, SCALER_FILE, THRESHOLD_FILE, REQUIRED_LENGTH
-
-def load_artifacts(model_path, scaler_path, threshold_path):
-    """Loads the trained authentication model, scaler, and threshold."""
-    if not os.path.exists(model_path):
-        print(f"Error: {model_path} not found. Run train.py first!")
-        sys.exit(1)
-    if not os.path.exists(scaler_path):
-        print(f"Error: {scaler_path} not found. Run train.py first!")
-        sys.exit(1)
-    if not os.path.exists(threshold_path):
-        print(f"Error: {threshold_path} not found. Run train.py first!")
-        sys.exit(1)
-        
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
-    with open(scaler_path, "rb") as f:
-        scaler = pickle.load(f)
-    with open(threshold_path, "rb") as f:
-        threshold = pickle.load(f)
-        
-    return model, scaler, threshold
+from config import MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
+from utils import load_artifacts, check_columns
 
 def verify_external_data(csv_path, model, scaler, threshold):
     """
     Loads external CSV data and verifies each row against the model.
     """
-    if not os.path.exists(csv_path):
-        print(f"Error: CSV file '{csv_path}' not found.")
-        sys.exit(1)
-        
-    print(f"Loading data from: {csv_path}")
     try:
         df = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        print(f"Error: CSV file '{csv_path}' not found.")
+        sys.exit(1)
     except Exception as e:
         print(f"Error reading CSV: {e}")
         sys.exit(1)
 
-    # Validate columns
-    # Expected format is k0_hold, k0_ud, k0_dd, ..., k19_hold, k19_ud, k19_dd
-    expected_cols = REQUIRED_LENGTH * 3
-    if len(df.columns) != expected_cols:
-        print(f"Warning: Expected {expected_cols} columns, found {len(df.columns)}.")
-        print("Attempting to verify anyway if columns match feature pattern...")
-        
-    # Ensure correct column names if they are mismatched but count is correct
-    if len(df.columns) == expected_cols:
-         # Generate expected headers
-        expected_headers = []
-        for i in range(REQUIRED_LENGTH):
-            expected_headers.extend([f"k{i}_hold", f"k{i}_ud", f"k{i}_dd"])
-            
-        # If headers are different (e.g. from web collector might be slightly off or old format), rename them
-        if list(df.columns) != expected_headers:
-             print("Adjusting column headers to match model expectation...")
-             df.columns = expected_headers
+    # Use shared utility to validate/fix columns
+    df = check_columns(df)
 
     # Statistics counters
     total_attempts = len(df)
@@ -123,9 +83,9 @@ def verify_external_data(csv_path, model, scaler, threshold):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Batch verify external keystroke data CSV.")
     parser.add_argument("csv_file", help="Path to the external CSV file to verify")
-    parser.add_argument("--model", default=MODEL_FILE, help="Path to the trained model file")
-    parser.add_argument("--scaler", default=SCALER_FILE, help="Path to the trained scaler file")
-    parser.add_argument("--threshold", default=THRESHOLD_FILE, help="Path to the threshold file")
+    parser.add_argument("--model", default=str(MODEL_FILE), help="Path to the trained model file")
+    parser.add_argument("--scaler", default=str(SCALER_FILE), help="Path to the trained scaler file")
+    parser.add_argument("--threshold", default=str(THRESHOLD_FILE), help="Path to the threshold file")
     args = parser.parse_args()
 
     # Load model
@@ -133,4 +93,3 @@ if __name__ == "__main__":
     
     # Run verification
     verify_external_data(args.csv_file, model, scaler, threshold)
-

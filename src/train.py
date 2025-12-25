@@ -1,7 +1,6 @@
 """
 Training script for the Keystroke Dynamics Authentication model (Autoencoder).
 """
-import os
 import pickle
 import sys
 import pandas as pd
@@ -9,17 +8,17 @@ import numpy as np
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error
 import argparse
 from config import KEYSTROKE_DATA_FILE, MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
+from utils import augment_data
 
 # 0. PARSE ARGUMENTS
 # ------------------
 parser = argparse.ArgumentParser(description="Train the Keystroke Dynamics Autoencoder.")
-parser.add_argument("input_file", nargs="?", default=KEYSTROKE_DATA_FILE, help="Path to the positive user data CSV (default: from config).")
-parser.add_argument("--model", default=MODEL_FILE, help="Path to save the trained model (default: from config).")
-parser.add_argument("--scaler", default=SCALER_FILE, help="Path to save the scaler (default: from config).")
-parser.add_argument("--threshold", default=THRESHOLD_FILE, help="Path to save the threshold (default: from config).")
+parser.add_argument("input_file", nargs="?", default=str(KEYSTROKE_DATA_FILE), help="Path to the positive user data CSV (default: from config).")
+parser.add_argument("--model", default=str(MODEL_FILE), help="Path to save the trained model (default: from config).")
+parser.add_argument("--scaler", default=str(SCALER_FILE), help="Path to save the scaler (default: from config).")
+parser.add_argument("--threshold", default=str(THRESHOLD_FILE), help="Path to save the threshold (default: from config).")
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -35,15 +34,15 @@ if __name__ == "__main__":
 
     # 1. LOAD POSITIVE DATA
     # ---------------------
-    if not os.path.exists(POSITIVE_DATA_FILE):
+    try:
+        real_user = pd.read_csv(POSITIVE_DATA_FILE)
+    except FileNotFoundError:
         print(f"Error: '{POSITIVE_DATA_FILE}' not found. Record your data first!")
         sys.exit(1)
 
-    real_user = pd.read_csv(POSITIVE_DATA_FILE)
     print(f"Loaded {len(real_user)} samples from User.")
 
     # Identify feature columns (all columns in the new CSV structure are features)
-    # Note: The new structure does NOT have a 'label' column in the CSV.
     feature_cols = list(real_user.columns)
     X_real = real_user[feature_cols]
 
@@ -54,28 +53,6 @@ if __name__ == "__main__":
 
     # 3. FUZZY AUGMENTATION (Level 3)
     # -------------------------------
-    def augment_data(X, num_copies=15, noise_scale=0.05):
-        """
-        Generates synthetic samples by adding Gaussian noise to real samples.
-        """
-        augmented_data = []
-        # Calculate std dev per feature to scale noise appropriately
-        feature_stds = X.std(axis=0)
-        # Replace 0 stds with a small value to avoid errors if a feature is constant
-        feature_stds[feature_stds == 0] = 1e-6 
-        
-        for _, row in X.iterrows():
-            # Add original
-            augmented_data.append(row.values)
-            
-            # Add copies
-            for _ in range(num_copies):
-                noise = np.random.normal(0, feature_stds * noise_scale)
-                new_row = row.values + noise
-                augmented_data.append(new_row)
-                
-        return pd.DataFrame(augmented_data, columns=X.columns)
-
     print(f"Augmenting data... (Original: {len(X_train_raw)})")
     X_train_augmented = augment_data(X_train_raw)
     print(f"Augmented Training Set Size: {len(X_train_augmented)}")

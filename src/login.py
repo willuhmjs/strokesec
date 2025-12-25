@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import pickle
+import numpy as np
 import pandas as pd
 from config import TARGET_PHRASE, REQUIRED_LENGTH, MODEL_FILE, SCALER_FILE
 from capture import KeystrokeCapture
@@ -49,20 +50,27 @@ def verify_user(attempt_data, model, scaler):
     df = pd.DataFrame([row])
     
     # Scale the input
-    df_scaled = scaler.transform(df)
-    
-    # Get probability [Imposter_Prob, User_Prob]
-    proba = model.predict_proba(df_scaled)[0] 
-    confidence = proba[1] 
-    
-    print("\n" + "="*30)
-    print(f"Biometric Confidence: {confidence*100:.2f}%")
-    
-    if confidence > 0.85:
-        print("✅ ACCESS GRANTED. Welcome back, Will.")
-    else:
-        print("⛔ ACCESS DENIED. Rhythm does not match.")
-    print("="*30 + "\n")
+    try:
+        df_scaled = scaler.transform(df)
+        
+        # Get probability [Imposter_Prob, User_Prob]
+        proba = model.predict_proba(df_scaled)[0] 
+        confidence = proba[1] 
+        
+        print("\n" + "="*30)
+        print(f"Biometric Confidence: {confidence*100:.2f}%")
+        
+        if confidence > 0.85:
+            print("✅ ACCESS GRANTED. Welcome back, Will.")
+        else:
+            print("⛔ ACCESS DENIED. Rhythm does not match.")
+        print("="*30 + "\n")
+    except ValueError as e:
+        print(f"\n❌ Error during verification: {e}")
+        print("This usually means the feature count doesn't match the model.")
+        print(f"Expected features: {scaler.n_features_in_ if hasattr(scaler, 'n_features_in_') else 'Unknown'}")
+        print(f"Provided features: {df.shape[1]}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Login verification.")
@@ -70,13 +78,17 @@ if __name__ == "__main__":
     parser.add_argument("--scaler", default=SCALER_FILE, help="Path to the scaler file (default: from config).")
     args = parser.parse_args()
 
-    ai_brain, scaler = load_model_and_scaler(args.model, args.scaler)
-    
-    while True:
-        try:
-            data = capture_login_attempt()
-            verify_user(data, ai_brain, scaler)
-            if input("Test again? (y/n): ").lower() != 'y':
+    try:
+        ai_brain, scaler = load_model_and_scaler(args.model, args.scaler)
+        
+        while True:
+            try:
+                data = capture_login_attempt()
+                verify_user(data, ai_brain, scaler)
+                if input("Test again? (y/n): ").lower() != 'y':
+                    break
+            except KeyboardInterrupt:
                 break
-        except KeyboardInterrupt:
-            break
+    except Exception as e:
+        print(f"Error initializing login system: {e}")
+        sys.exit(1)

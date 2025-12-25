@@ -1,31 +1,33 @@
-import keyboard
-import time
-import pandas as pd
+"""
+Data collector script for recording keystroke dynamics.
+"""
 import os
-
-# CONFIG
-TARGET_PHRASE = "the quick brown fox"
-# "the quick brown fox" (19 chars) + Enter (1 char) = 20
-REQUIRED_LENGTH = 20 
+import shutil
+from datetime import datetime
+import pandas as pd
+import keyboard
+from config import TARGET_PHRASE, REQUIRED_LENGTH, KEYSTROKE_DATA_FILE, IMPOSTER_DATA_FILE
+from capture import KeystrokeCapture
 
 def select_profile():
+    """Selects which user profile to record data for."""
     print("\n" + "="*30)
     print("   KEYSTROKE DATA COLLECTOR   ")
     print("="*30)
     print("Who is typing right now?")
-    print("1. Will (The Master) -> keystroke_data.csv")
-    print("2. Stranger (Imposter) -> imposter_data.csv")
+    print(f"1. Will (The Master) -> {os.path.basename(KEYSTROKE_DATA_FILE)}")
+    print(f"2. Stranger (Imposter) -> {os.path.basename(IMPOSTER_DATA_FILE)}")
     print("3. Custom Name...")
-    
+
     choice = input("\nSelect Option (1-3): ")
-    
+
     if choice == '1':
-        return "keystroke_data.csv"
-    elif choice == '2':
-        return "imposter_data.csv"
-    else:
-        name = input("Enter filename (e.g. 'mom'): ")
-        return f"{name}_data.csv"
+        return KEYSTROKE_DATA_FILE
+    if choice == '2':
+        return IMPOSTER_DATA_FILE
+    
+    name = input("Enter filename (e.g. 'mom'): ")
+    return f"{name}_data.csv"
 
 # --- MAIN SETUP ---
 filename = select_profile()
@@ -36,14 +38,13 @@ if os.path.exists(filename):
         existing_df = pd.read_csv(filename)
         expected_cols = REQUIRED_LENGTH * 2
         if len(existing_df.columns) != expected_cols:
-            import shutil
-            from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_name = f"{filename.replace('.csv', '')}_backup_{timestamp}.csv"
-            print(f"\n⚠️  Column mismatch detected! Expected {expected_cols}, found {len(existing_df.columns)}.")
+            print(f"\n⚠️  Column mismatch detected! Expected {expected_cols}, "
+                  f"found {len(existing_df.columns)}.")
             print(f"   Renaming '{filename}' to '{backup_name}' and starting fresh.")
             shutil.move(filename, backup_name)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         print(f"\n⚠️  Error checking {filename}: {e}")
 
 print(f"\n[INFO] Saving data to: {filename}")
@@ -52,53 +53,25 @@ print("Run with SUDO if it fails.")
 
 # VARIABLES
 records = []
-current_record = []
-press_times = {}
-
-def on_event(event):
-    global current_record, records, press_times
-    
-    k = event.name
-    now = event.time
-    
-    if event.event_type == 'down':
-        if k not in press_times:
-            press_times[k] = now
-
-    elif event.event_type == 'up':
-        if k in press_times:
-            start_time = press_times.pop(k)
-            dwell = now - start_time
-            
-            flight = 0.0
-            if len(current_record) > 0:
-                last_release = current_record[-1]['release_ts']
-                flight = start_time - last_release
-
-            current_record.append({
-                'key': k,
-                'dwell': dwell,
-                'flight': flight,
-                'release_ts': now
-            })
-            
-            if k == 'enter':
-                # --- NEW FILTER LOGIC ---
-                if len(current_record) == REQUIRED_LENGTH:
-                    records.append(current_record)
-                    print(f"✅ Recorded Entry #{len(records)} | Length: {len(current_record)}")
-                else:
-                    # Discard immediately
-                    print(f"⚠️ Discarded Entry (Length {len(current_record)}). No typos allowed!")
-                
-                current_record = []
-                press_times = {}
-
-# Hook the global keyboard
-keyboard.hook(on_event)
+capture = KeystrokeCapture()
 
 try:
-    keyboard.wait() 
+    while True:
+        # We manually manage the loop here to allow continuous recording
+        print("\nReady... Type!")
+        current_record = capture.capture_sequence()
+
+        if len(current_record) == REQUIRED_LENGTH:
+            records.append(current_record)
+            print(f"✅ Recorded Entry #{len(records)} | Length: {len(current_record)}")
+        else:
+            # Discard immediately
+            print(f"⚠️ Discarded Entry (Length {len(current_record)}). No typos allowed!")
+            
+        # Check if user wants to stop (this part is tricky with just capture_sequence)
+        # We'll rely on KeyboardInterrupt for now as per original design logic 
+        # but improved to use the class
+        
 except KeyboardInterrupt:
     print("\nStopping...")
 

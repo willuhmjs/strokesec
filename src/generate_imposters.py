@@ -1,13 +1,13 @@
+"""
+Script to generate synthetic imposter data for training.
+"""
+import os
 import pandas as pd
 import numpy as np
-import os
-
-# Configuration matching data_collector.py
-TARGET_PHRASE = "the quick brown fox"
-REQUIRED_LENGTH = 20 # 19 chars + 1 enter
-OUTPUT_FILE = "imposter_data.csv"
+from config import REQUIRED_LENGTH, IMPOSTER_DATA_FILE
 
 def generate_persona_data(persona_name, num_samples=50):
+    """Generates synthetic keystroke data for a specific persona."""
     data = []
     
     print(f"Generating {num_samples} samples for persona: {persona_name}")
@@ -48,6 +48,7 @@ def generate_persona_data(persona_name, num_samples=50):
     return data
 
 def main():
+    """Main execution function."""
     personas = ["Turtle", "Rabbit", "Stumbler", "Average Joe"]
     all_data = []
     
@@ -57,11 +58,11 @@ def main():
     df = pd.DataFrame(all_data)
     
     # Save to CSV
-    if os.path.exists(OUTPUT_FILE):
-        print(f"Overwriting existing {OUTPUT_FILE}...")
+    if os.path.exists(IMPOSTER_DATA_FILE):
+        print(f"Overwriting existing {IMPOSTER_DATA_FILE}...")
     
-    df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Successfully generated {len(df)} synthetic imposter records in {OUTPUT_FILE}")
+    df.to_csv(IMPOSTER_DATA_FILE, index=False)
+    print(f"Successfully generated {len(df)} synthetic imposter records in {IMPOSTER_DATA_FILE}")
     print(f"Columns: {len(df.columns)}")
 
 if __name__ == "__main__":

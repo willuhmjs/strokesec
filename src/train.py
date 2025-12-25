@@ -1,18 +1,23 @@
+"""
+Training script for the Keystroke Dynamics Authentication model.
+"""
+import os
+import pickle
+import sys
 import pandas as pd
 import numpy as np
-import pickle
-import os
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from config import KEYSTROKE_DATA_FILE, IMPOSTER_DATA_FILE, MODEL_FILE
 
 # 1. LOAD POSITIVE DATA (YOU)
 # ---------------------------
-if not os.path.exists("keystroke_data.csv"):
-    print("Error: 'keystroke_data.csv' not found. Record your data first!")
-    exit()
+if not os.path.exists(KEYSTROKE_DATA_FILE):
+    print(f"Error: '{KEYSTROKE_DATA_FILE}' not found. Record your data first!")
+    sys.exit(1)
 
-real_user = pd.read_csv("keystroke_data.csv")
+real_user = pd.read_csv(KEYSTROKE_DATA_FILE)
 real_user['label'] = 1 
 print(f"Loaded {len(real_user)} samples from YOU.")
 
@@ -20,9 +25,9 @@ print(f"Loaded {len(real_user)} samples from YOU.")
 # ---------------------------------
 # Strategy: Prefer Real Imposters. Fallback to Synthetic Randomness.
 
-if os.path.exists("imposter_data.csv"):
+if os.path.exists(IMPOSTER_DATA_FILE):
     print("Found REAL imposter data. Using it.")
-    fake_user = pd.read_csv("imposter_data.csv")
+    fake_user = pd.read_csv(IMPOSTER_DATA_FILE)
     fake_user['label'] = 0
 else:
     print("No real imposter data found. Generating 'Random Stranger' data...")
@@ -71,6 +76,6 @@ print(classification_report(y_test, predictions, target_names=["Imposter", "Real
 
 # 5. SAVE
 # -------
-with open("auth_model.pkl", "wb") as f:
+with open(MODEL_FILE, "wb") as f:
     pickle.dump(model, f)
-print("Model saved to 'auth_model.pkl'")
+print(f"Model saved to '{MODEL_FILE}'")

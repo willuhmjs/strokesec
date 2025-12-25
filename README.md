@@ -1,58 +1,91 @@
 # StrokeSec
 
-StrokeSec is a Keystroke Dynamics Authentication System that uses typing patterns (dwell time and flight time) to distinguish between a real user and an imposter.
+StrokeSec is a behavioral biometric authentication system. It uses keystroke dynamics—specifically **dwell time** (key press duration) and **flight time** (interval between presses)—to verify user identity.
 
-## Features
-- **Data Collection**: Records typing patterns for the phrase *"the quick brown fox"*.
-- **Data Analysis**: Visualizes your typing "fingerprint" (muscle memory vs. rhythm).
-- **Machine Learning**: Trains a neural network to authenticate users based on their unique typing biometrics.
-- **Login Verification**: Real-time biometric authentication system.
+It uses a Multi-Layer Perceptron (MLP) for binary classification (User vs. Imposter).
 
 ## Setup
 
-1. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-   *Note: Requires `sudo` for keyboard hooking on Linux.*
+```bash
+# create/activate venv
+python3 -m venv venv
+source venv/bin/activate
 
-2. **Collect Data** (Train the system)
-   ```bash
-   sudo python3 src/data_collector.py
-   ```
-   - Type the target phrase 20-30 times.
-   - It will save to `keystroke_data.csv`.
+# install deps (scikit-learn, pandas, matplotlib, keyboard/evdev)
+pip install -r requirements.txt
 
-3. **Generate Imposter Data**
-   ```bash
-   python3 src/generate_imposters.py
-   ```
-   - Creates synthetic "bad guys" to train the AI against.
+```
 
-4. **Train the Model**
-   ```bash
-   python3 src/train.py
-   ```
-   - Trains a Neural Network (MLP) on your data vs. the imposters.
-   - Saves the brain to `auth_model.pkl`.
+## Usage
 
-5. **Test Authentication**
-   ```bash
-   sudo python3 src/login.py
-   ```
-   - Type the phrase. The system will grant or deny access based on your rhythm.
+**Note:** Linux requires `sudo` access to hook into raw keyboard events via `evdev`.
 
-6. **Visualize Your Pattern**
-   ```bash
-   python3 src/visualize.py
-   ```
-   - Generates `typing_pattern.png` showing your dwell and flight time distributions.
+### 1. Data Collection
 
-## Project Structure
-- `src/capture.py`: Shared logic for keyboard hooking and timing.
-- `src/config.py`: Central configuration for constants and file paths.
-- `src/data_collector.py`: Tool for recording training data.
-- `src/generate_imposters.py`: Generates synthetic negative samples.
-- `src/login.py`: The actual authentication mechanism.
-- `src/train.py`: Model training script using Scikit-Learn.
-- `src/visualize.py`: Data visualization tool.
+Record your typing baseline. The system defaults to the phrase *"the quick brown fox..."*.
+
+```bash
+sudo python3 src/data_collector.py
+
+```
+
+* Follow the prompts to type the phrase 20+ times.
+* Data is saved to `data/<username>_data.csv`.
+
+### 2. Generate Negatives
+
+Create synthetic data to train the model on what *isn't* you.
+
+```bash
+python3 src/generate_imposters.py
+
+```
+
+* Generates `data/imposter_data.csv` based on statistical averages outside your range.
+
+### 3. Train Model
+
+Train the MLP Classifier.
+
+```bash
+python3 src/train.py
+
+```
+
+* Vectorizes the CSV data and trains the scaler/model.
+* Artifacts saved: `data/auth_model.pkl` and `data/auth_scaler.pkl`.
+
+### 4. Authenticate
+
+Run the real-time verification loop.
+
+```bash
+sudo python3 src/login.py
+
+```
+
+### 5. Visualization (Optional)
+
+Generate a plot comparing your dwell/flight times against the imposter dataset.
+
+```bash
+python3 src/visualize.py
+
+```
+
+* Output: `data/typing_pattern.png`
+
+## Key Modules
+
+| File | Description |
+| --- | --- |
+| `src/capture.py` | Handles low-level keyboard hooking and timestamp extraction. |
+| `src/data_collector.py` | CLI tool for building the positive dataset. |
+| `src/train.py` | Loads CSVs, scales features, and trains the Scikit-Learn MLP. |
+| `src/login.py` | Loads the pickle files and performs inference on live input. |
+| `src/config.py` | Global constants (target phrase, file paths, model params). |
+| `web_collector/` | (Optional) HTML interface for browser-based data collection. |
+
+### Note on Dependencies
+
+This project relies on `evdev` (Linux) or `keyboard` (Windows/Root) for global hooks. Ensure your Python environment has access to input devices.

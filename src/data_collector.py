@@ -17,7 +17,7 @@ def select_profile():
     print("Who is typing right now?")
     print(f"1. Will (The Master) -> {os.path.basename(KEYSTROKE_DATA_FILE)}")
     print(f"2. Stranger (Imposter) -> {os.path.basename(IMPOSTER_DATA_FILE)}")
-    print("3. Custom Name...")
+    print("3. Custom Name (Creates new synced data file)")
 
     choice = input("\nSelect Option (1-3): ")
 
@@ -26,8 +26,9 @@ def select_profile():
     if choice == '2':
         return IMPOSTER_DATA_FILE
     
-    name = input("Enter filename (e.g. 'mom'): ")
-    return f"{name}_data.csv"
+    from config import DATA_DIR
+    name = input("Enter your name (e.g. 'alice'): ").strip().lower()
+    return os.path.join(DATA_DIR, f"{name}_data.csv")
 
 # --- MAIN SETUP ---
 filename = select_profile()

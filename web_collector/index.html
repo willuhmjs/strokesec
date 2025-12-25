@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keystroke Data Collector</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .instructions {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 5px solid #3498db;
+        }
+        .target-phrase {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2980b9;
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            user-select: none;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.success { color: #27ae60; }
+        .status.error { color: #c0392b; }
+        
+        .data-preview {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .records-count {
+            float: right;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Keystroke Data Collector</h1>
+        
+        <div class="instructions">
+            <p><strong>Instructions:</strong></p>
+            <ol>
+                <li>Type the phrase below exactly as shown.</li>
+                <li>Press <strong>ENTER</strong> when finished.</li>
+                <li>If you make a mistake, clear the field and try again.</li>
+                <li>Collect at least 10-20 samples for better data.</li>
+            </ol>
+        </div>
+
+        <div class="target-phrase">the quick brown fox</div>
+
+        <input type="text" id="inputField" placeholder="Type here and press Enter..." autocomplete="off" spellcheck="false">
+        
+        <div id="statusMessage" class="status"></div>
+        
+        <div class="data-preview">
+            <div class="records-count">Records: <span id="recordCount">0</span></div>
+            <h3>Collected Data (CSV)</h3>
+            <textarea id="csvOutput" readonly></textarea>
+            <button id="downloadBtn" onclick="downloadCSV()" disabled>Download CSV</button>
+            <button onclick="copyToClipboard()" style="background-color: #3498db; margin-top: 10px;">Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        const TARGET_PHRASE = "the quick brown fox";
+        const REQUIRED_LENGTH = 19; // Length of phrase without Enter
+        // Based on your Python config, REQUIRED_LENGTH is 20 (including Enter)
+        // Python: REQUIRED_LENGTH = 20 (19 chars + 1 enter)
+        
+        const inputField = document.getElementById('inputField');
+        const statusMessage = document.getElementById('statusMessage');
+        const csvOutput = document.getElementById('csvOutput');
+        const recordCount = document.getElementById('recordCount');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let pressTimes = {};
+        let currentRecord = [];
+        let collectedRecords = [];
+        
+        // Initialize CSV header matching imposter_data.csv structure
+        // k0_dwell,k0_flight,k1_dwell,k1_flight... up to k19
+        let header = [];
+        for (let i = 0; i < 20; i++) {
+            header.push(`k${i}_dwell`);
+            header.push(`k${i}_flight`);
+        }
+        let csvContent = header.join(',') + '\n';
+        csvOutput.value = csvContent;
+
+        inputField.addEventListener('keydown', (e) => {
+            const now = performance.now() / 1000; // Convert to seconds
+            const key = e.key.toLowerCase();
+            
+            // Handle Backspace/Delete - reset current attempt
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                resetAttempt();
+                statusMessage.textContent = "Typing cleared. Start again.";
+                statusMessage.className = "status";
+                return;
+            }
+
+            // Ignore modifier keys alone
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
+
+            // Record press time
+            if (!pressTimes[e.code]) {
+                pressTimes[e.code] = now;
+            }
+        });
+
+        inputField.addEventListener('keyup', (e) => {
+            const now = performance.now() / 1000; // Convert to seconds
+            
+            // Enter key handling - Process the sequence
+            if (e.key === 'Enter') {
+                processSequence();
+                return;
+            }
+
+            // Standard key processing
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Backspace', 'Delete'].includes(e.key)) return;
+
+            const code = e.code;
+            if (pressTimes[code]) {
+                const startTime = pressTimes[code];
+                const dwell = now - startTime;
+                delete pressTimes[code]; // Clear press time
+
+                let flight = 0.0;
+                if (currentRecord.length > 0) {
+                    const lastRelease = currentRecord[currentRecord.length - 1].release_ts;
+                    flight = startTime - lastRelease;
+                }
+
+                currentRecord.push({
+                    key: e.key,
+                    dwell: dwell,
+                    flight: flight,
+                    release_ts: now
+                });
+            }
+        });
+
+        function resetAttempt() {
+            currentRecord = [];
+            pressTimes = {};
+            // We don't clear the input value here, user does that manually or we do it after success
+        }
+
+        function processSequence() {
+            const typedText = inputField.value.trim(); // Remove newline/enter char if present
+            
+            // Check if valid
+            // Note: inputField.value might not contain Enter yet, but our record does NOT capture enter in keyup
+            // We need to simulate the Enter key metrics or decide if we include it.
+            // Looking at your python code:
+            // It captures 'enter' as the last key.
+            // Python: captures until ENTER is pressed.
+            
+            // Let's add the Enter key metrics manually since keyup triggered this
+            // But wait, keyup for Enter just happened. 
+            // Actually, we don't have dwell for Enter because we process ON keyup.
+            // So we need to grab the Enter metrics now.
+            
+            // BUT, usually Enter clears the input.
+            
+            // Let's fix the Enter logic. We are inside keyup for Enter.
+            // So we can calculate Enter's dwell.
+            const now = performance.now() / 1000;
+            const enterCode = 'Enter'; // or 'NumpadEnter'
+            // We might have missed the keydown for Enter if we are not careful, 
+            // but the event listener is global for input.
+            
+            // Actually, `e.code` for Enter would be in pressTimes if keydown fired.
+            // Let's try to find it.
+            let enterStart = null;
+            // Iterate pressTimes to find Enter if code is varying
+            for(let c in pressTimes) {
+                if (c.includes('Enter')) {
+                    enterStart = pressTimes[c];
+                    delete pressTimes[c];
+                    break;
+                }
+            }
+
+            if (enterStart) {
+                const dwell = now - enterStart;
+                let flight = 0.0;
+                if (currentRecord.length > 0) {
+                    const lastRelease = currentRecord[currentRecord.length - 1].release_ts;
+                    flight = enterStart - lastRelease;
+                }
+                currentRecord.push({
+                    key: 'Enter',
+                    dwell: dwell,
+                    flight: flight,
+                    release_ts: now
+                });
+            } else {
+                // Fallback if something weird happened, though keydown should have caught it
+                // We'll just skip adding Enter if missing, but validation will fail.
+            }
+
+            // Validate
+            // Target phrase length: 19
+            // + 1 Enter = 20 keys total
+            
+            if (typedText === TARGET_PHRASE && currentRecord.length === 20) {
+                saveRecord(currentRecord);
+                statusMessage.textContent = `✅ Success! Entry #${collectedRecords.length} recorded.`;
+                statusMessage.className = "status success";
+            } else {
+                statusMessage.textContent = `⚠️ Invalid entry. Expected "${TARGET_PHRASE}" (Length: 20 keys). You typed: "${typedText}" (${currentRecord.length} keys)`;
+                statusMessage.className = "status error";
+            }
+            
+            // Reset for next
+            inputField.value = '';
+            resetAttempt();
+        }
+
+        function saveRecord(record) {
+            collectedRecords.push(record);
+            recordCount.textContent = collectedRecords.length;
+            downloadBtn.disabled = false;
+
+            // Format to CSV line
+            // Row format: k0_dwell,k0_flight, k1_dwell,k1_flight ...
+            let row = [];
+            
+            // We expect exactly 20 keys
+            for (let i = 0; i < 20; i++) {
+                if (i < record.length) {
+                    row.push(record[i].dwell.toFixed(17)); // Match Python float precision roughly
+                    row.push(record[i].flight.toFixed(17));
+                } else {
+                    // Should not happen due to validation, but safe fallback
+                    row.push(0);
+                    row.push(0);
+                }
+            }
+            
+            csvContent += row.join(',') + '\n';
+            csvOutput.value = csvContent;
+            
+            // Scroll to bottom
+            csvOutput.scrollTop = csvOutput.scrollHeight;
+        }
+
+        function downloadCSV() {
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'imposter_data_web.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function copyToClipboard() {
+            csvOutput.select();
+            document.execCommand('copy');
+            alert("CSV data copied to clipboard!");
+        }
+    </script>
+</body>
+</html>

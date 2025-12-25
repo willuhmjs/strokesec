@@ -4,18 +4,27 @@ Login verification script using trained neural network model.
 import time
 import os
 import sys
+import argparse
 import pickle
 import pandas as pd
-from config import TARGET_PHRASE, REQUIRED_LENGTH, MODEL_FILE
+from config import TARGET_PHRASE, REQUIRED_LENGTH, MODEL_FILE, SCALER_FILE
 from capture import KeystrokeCapture
 
-def load_model():
-    """Loads the trained authentication model."""
-    if not os.path.exists(MODEL_FILE):
-        print(f"Error: {MODEL_FILE} not found. Run train_model.py first!")
+def load_model_and_scaler(model_path, scaler_path):
+    """Loads the trained authentication model and scaler."""
+    if not os.path.exists(model_path):
+        print(f"Error: {model_path} not found. Run train_model.py first!")
         sys.exit(1)
-    with open(MODEL_FILE, "rb") as f:
-        return pickle.load(f)
+    if not os.path.exists(scaler_path):
+        print(f"Error: {scaler_path} not found. Run train_model.py first!")
+        sys.exit(1)
+        
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    with open(scaler_path, "rb") as f:
+        scaler = pickle.load(f)
+        
+    return model, scaler
 
 def capture_login_attempt():
     """Captures a single login attempt string."""
@@ -24,7 +33,7 @@ def capture_login_attempt():
     capture = KeystrokeCapture()
     return capture.capture_sequence()
 
-def verify_user(attempt_data, model):
+def verify_user(attempt_data, model, scaler):
     """Verifies the user based on the captured keystroke data."""
     # Strict Length Check
     if len(attempt_data) != REQUIRED_LENGTH:
@@ -39,8 +48,11 @@ def verify_user(attempt_data, model):
         
     df = pd.DataFrame([row])
     
+    # Scale the input
+    df_scaled = scaler.transform(df)
+    
     # Get probability [Imposter_Prob, User_Prob]
-    proba = model.predict_proba(df)[0] 
+    proba = model.predict_proba(df_scaled)[0] 
     confidence = proba[1] 
     
     print("\n" + "="*30)
@@ -53,12 +65,17 @@ def verify_user(attempt_data, model):
     print("="*30 + "\n")
 
 if __name__ == "__main__":
-    ai_brain = load_model()
+    parser = argparse.ArgumentParser(description="Login verification.")
+    parser.add_argument("model", nargs="?", default=MODEL_FILE, help="Path to the model file (default: from config).")
+    parser.add_argument("--scaler", default=SCALER_FILE, help="Path to the scaler file (default: from config).")
+    args = parser.parse_args()
+
+    ai_brain, scaler = load_model_and_scaler(args.model, args.scaler)
     
     while True:
         try:
             data = capture_login_attempt()
-            verify_user(data, ai_brain)
+            verify_user(data, ai_brain, scaler)
             if input("Test again? (y/n): ").lower() != 'y':
                 break
         except KeyboardInterrupt:

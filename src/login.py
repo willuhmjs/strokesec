@@ -1,7 +1,6 @@
 """
 Login verification script using trained neural network model.
 """
-import time
 import os
 import sys
 import argparse
@@ -71,20 +70,19 @@ def verify_user(attempt_data, model, scaler):
         print(f"Expected features: {scaler.n_features_in_ if hasattr(scaler, 'n_features_in_') else 'Unknown'}")
         print(f"Provided features: {df.shape[1]}")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Login verification.")
-    parser.add_argument("model", nargs="?", default=MODEL_FILE, help="Path to the model file (default: from config).")
+    parser.add_argument("--model", default=MODEL_FILE, help="Path to the model file (default: from config).")
     parser.add_argument("--scaler", default=SCALER_FILE, help="Path to the scaler file (default: from config).")
     args = parser.parse_args()
 
     try:
-        ai_brain, scaler = load_model_and_scaler(args.model, args.scaler)
+        model, scaler = load_model_and_scaler(args.model, args.scaler)
         
         while True:
             try:
                 data = capture_login_attempt()
-                verify_user(data, ai_brain, scaler)
+                verify_user(data, model, scaler)
                 if input("Test again? (y/n): ").lower() != 'y':
                     break
             except KeyboardInterrupt:

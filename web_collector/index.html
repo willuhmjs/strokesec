@@ -133,8 +133,7 @@
     <script>
         const TARGET_PHRASE = "the quick brown fox";
         const REQUIRED_LENGTH = 19; // Length of phrase without Enter
-        // Based on your Python config, REQUIRED_LENGTH is 20 (including Enter)
-        // Python: REQUIRED_LENGTH = 20 (19 chars + 1 enter)
+        // Total expected keys = 19 chars + 1 Enter = 20 keys
         
         const inputField = document.getElementById('inputField');
         const statusMessage = document.getElementById('statusMessage');
@@ -143,22 +142,22 @@
         const downloadBtn = document.getElementById('downloadBtn');
 
         let pressTimes = {};
-        let currentRecord = [];
+        let rawEvents = []; // Store {key, code, press_ts, release_ts}
         let collectedRecords = [];
         
-        // Initialize CSV header matching imposter_data.csv structure
-        // k0_dwell,k0_flight,k1_dwell,k1_flight... up to k19
+        // Initialize CSV header matching new 3-feature structure
+        // k0_hold, k0_ud, k0_dd, k1_hold... up to k19
         let header = [];
         for (let i = 0; i < 20; i++) {
-            header.push(`k${i}_dwell`);
-            header.push(`k${i}_flight`);
+            header.push(`k${i}_hold`);
+            header.push(`k${i}_ud`);
+            header.push(`k${i}_dd`);
         }
         let csvContent = header.join(',') + '\n';
         csvOutput.value = csvContent;
 
         inputField.addEventListener('keydown', (e) => {
             const now = performance.now() / 1000; // Convert to seconds
-            const key = e.key.toLowerCase();
             
             // Handle Backspace/Delete - reset current attempt
             if (e.key === 'Backspace' || e.key === 'Delete') {
@@ -171,7 +170,7 @@
             // Ignore modifier keys alone
             if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
 
-            // Record press time
+            // Record press time if not already held
             if (!pressTimes[e.code]) {
                 pressTimes[e.code] = now;
             }
@@ -182,6 +181,28 @@
             
             // Enter key handling - Process the sequence
             if (e.key === 'Enter') {
+                // Capture Enter's release data
+                let code = e.code;
+                if (!pressTimes[code]) {
+                    // Try to find Enter in pressTimes if code mismatch (e.g. NumpadEnter vs Enter)
+                    for (let c in pressTimes) {
+                        if (c.includes('Enter')) {
+                            code = c;
+                            break;
+                        }
+                    }
+                }
+
+                if (pressTimes[code]) {
+                    rawEvents.push({
+                        key: 'Enter',
+                        code: code,
+                        press_ts: pressTimes[code],
+                        release_ts: now
+                    });
+                    delete pressTimes[code];
+                }
+                
                 processSequence();
                 return;
             }
@@ -191,95 +212,39 @@
 
             const code = e.code;
             if (pressTimes[code]) {
-                const startTime = pressTimes[code];
-                const dwell = now - startTime;
-                delete pressTimes[code]; // Clear press time
-
-                let flight = 0.0;
-                if (currentRecord.length > 0) {
-                    const lastRelease = currentRecord[currentRecord.length - 1].release_ts;
-                    flight = startTime - lastRelease;
-                }
-
-                currentRecord.push({
+                rawEvents.push({
                     key: e.key,
-                    dwell: dwell,
-                    flight: flight,
+                    code: code,
+                    press_ts: pressTimes[code],
                     release_ts: now
                 });
+                delete pressTimes[code];
             }
         });
 
         function resetAttempt() {
-            currentRecord = [];
+            rawEvents = [];
             pressTimes = {};
             // We don't clear the input value here, user does that manually or we do it after success
         }
 
         function processSequence() {
-            const typedText = inputField.value.trim(); // Remove newline/enter char if present
+            const typedText = inputField.value.trim();
             
-            // Check if valid
-            // Note: inputField.value might not contain Enter yet, but our record does NOT capture enter in keyup
-            // We need to simulate the Enter key metrics or decide if we include it.
-            // Looking at your python code:
-            // It captures 'enter' as the last key.
-            // Python: captures until ENTER is pressed.
-            
-            // Let's add the Enter key metrics manually since keyup triggered this
-            // But wait, keyup for Enter just happened. 
-            // Actually, we don't have dwell for Enter because we process ON keyup.
-            // So we need to grab the Enter metrics now.
-            
-            // BUT, usually Enter clears the input.
-            
-            // Let's fix the Enter logic. We are inside keyup for Enter.
-            // So we can calculate Enter's dwell.
-            const now = performance.now() / 1000;
-            const enterCode = 'Enter'; // or 'NumpadEnter'
-            // We might have missed the keydown for Enter if we are not careful, 
-            // but the event listener is global for input.
-            
-            // Actually, `e.code` for Enter would be in pressTimes if keydown fired.
-            // Let's try to find it.
-            let enterStart = null;
-            // Iterate pressTimes to find Enter if code is varying
-            for(let c in pressTimes) {
-                if (c.includes('Enter')) {
-                    enterStart = pressTimes[c];
-                    delete pressTimes[c];
-                    break;
-                }
-            }
+            // Sort events by press time to ensure correct order regardless of release order
+            rawEvents.sort((a, b) => a.press_ts - b.press_ts);
 
-            if (enterStart) {
-                const dwell = now - enterStart;
-                let flight = 0.0;
-                if (currentRecord.length > 0) {
-                    const lastRelease = currentRecord[currentRecord.length - 1].release_ts;
-                    flight = enterStart - lastRelease;
-                }
-                currentRecord.push({
-                    key: 'Enter',
-                    dwell: dwell,
-                    flight: flight,
-                    release_ts: now
-                });
-            } else {
-                // Fallback if something weird happened, though keydown should have caught it
-                // We'll just skip adding Enter if missing, but validation will fail.
-            }
-
-            // Validate
-            // Target phrase length: 19
-            // + 1 Enter = 20 keys total
+            // Validation
+            // Target phrase length: 19 + 1 Enter = 20 keys total
+            const expectedKeys = 20;
             
-            if (typedText === TARGET_PHRASE && currentRecord.length === 20) {
-                saveRecord(currentRecord);
+            // Check if text matches (ignoring Enter in text comparison) and key count matches
+            if (typedText === TARGET_PHRASE && rawEvents.length === expectedKeys) {
+                saveRecord(rawEvents);
                 statusMessage.textContent = `✅ Success! Entry #${collectedRecords.length} recorded.`;
                 statusMessage.className = "status success";
             } else {
-                statusMessage.textContent = `⚠️ Invalid entry. Expected "${TARGET_PHRASE}" (Length: 20 keys). You typed: "${typedText}" (${currentRecord.length} keys)`;
+                statusMessage.textContent = `⚠️ Invalid entry. Expected "${TARGET_PHRASE}" (Length: 20 keys). You typed: "${typedText}" (${rawEvents.length} keys captured)`;
                 statusMessage.className = "status error";
             }
             
@@ -288,24 +253,37 @@
             resetAttempt();
         }
 
-        function saveRecord(record) {
-            collectedRecords.push(record);
+        function saveRecord(events) {
+            collectedRecords.push(events);
             recordCount.textContent = collectedRecords.length;
             downloadBtn.disabled = false;
 
             // Format to CSV line
-            // Row format: k0_dwell,k0_flight, k1_dwell,k1_flight ...
+            // Row format: k0_hold, k0_ud, k0_dd, k1_hold...
             let row = [];
             
-            // We expect exactly 20 keys
             for (let i = 0; i < 20; i++) {
-                if (i < record.length) {
-                    row.push(record[i].dwell.toFixed(17)); // Match Python float precision roughly
-                    row.push(record[i].flight.toFixed(17));
+                if (i < events.length) {
+                    const curr = events[i];
+                    const prev = i > 0 ? events[i-1] : null;
+
+                    // Hold (Dwell): Release - Press
+                    const hold = curr.release_ts - curr.press_ts;
+
+                    // UD Flight: Current Press - Previous Release
+                    // If first key, 0
+                    const ud = prev ? (curr.press_ts - prev.release_ts) : 0.0;
+
+                    // DD Flight: Current Press - Previous Press
+                    // If first key, 0
+                    const dd = prev ? (curr.press_ts - prev.press_ts) : 0.0;
+
+                    row.push(hold.toFixed(17));
+                    row.push(ud.toFixed(17));
+                    row.push(dd.toFixed(17));
                 } else {
-                    // Should not happen due to validation, but safe fallback
-                    row.push(0);
-                    row.push(0);
+                    // Padding if logic fails (shouldn't with validation)
+                    row.push(0, 0, 0);
                 }
             }
             

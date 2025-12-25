@@ -51,6 +51,18 @@ def verify_external_data(csv_path, model, scaler, threshold):
     if len(df.columns) != expected_cols:
         print(f"Warning: Expected {expected_cols} columns, found {len(df.columns)}.")
         print("Attempting to verify anyway if columns match feature pattern...")
+        
+    # Ensure correct column names if they are mismatched but count is correct
+    if len(df.columns) == expected_cols:
+         # Generate expected headers
+        expected_headers = []
+        for i in range(REQUIRED_LENGTH):
+            expected_headers.extend([f"k{i}_hold", f"k{i}_ud", f"k{i}_dd"])
+            
+        # If headers are different (e.g. from web collector might be slightly off or old format), rename them
+        if list(df.columns) != expected_headers:
+             print("Adjusting column headers to match model expectation...")
+             df.columns = expected_headers
 
     # Statistics counters
     total_attempts = len(df)

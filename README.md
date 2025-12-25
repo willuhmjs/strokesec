@@ -2,7 +2,7 @@
 
 StrokeSec is a behavioral biometric authentication system. It uses keystroke dynamics—specifically **dwell time** (key press duration) and **flight time** (interval between presses)—to verify user identity.
 
-It uses a Multi-Layer Perceptron (MLP) for binary classification (User vs. Imposter).
+It uses an **Autoencoder** Neural Network for anomaly detection. Instead of training on "User vs. Imposter", it trains *only* on the user's data to learn their unique pattern. Any deviation (high reconstruction error) is flagged as an anomaly.
 
 ## Setup
 
@@ -13,7 +13,6 @@ source venv/bin/activate
 
 # install deps (scikit-learn, pandas, matplotlib, keyboard/evdev)
 pip install -r requirements.txt
-
 ```
 
 ## Usage
@@ -26,51 +25,42 @@ Record your typing baseline. The system defaults to the phrase *"the quick brown
 
 ```bash
 sudo python3 src/data_collector.py
-
 ```
 
 * Follow the prompts to type the phrase 20+ times.
-* Data is saved to `data/<username>_data.csv`.
+* Data is saved to `data/keystroke_data.csv`.
 
-### 2. Generate Negatives
+### 2. Train Model (Autoencoder)
 
-Create synthetic data to train the model on what *isn't* you.
-
-```bash
-python3 src/generate_imposters.py
-
-```
-
-* Generates `data/imposter_data.csv` based on statistical averages outside your range.
-
-### 3. Train Model
-
-Train the MLP Classifier.
+Train the Anomaly Detection Model.
 
 ```bash
 python3 src/train.py
-
 ```
 
-* Vectorizes the CSV data and trains the scaler/model.
-* Artifacts saved: `data/auth_model.pkl` and `data/auth_scaler.pkl`.
+*   **Fuzzy Augmentation:** Automatically generates synthetic variations of your typing to make the model robust.
+*   **Autoencoder:** Learns to compress and reconstruct your typing patterns.
+*   **Thresholding:** Automatically calculates a strict acceptance threshold based on your validation data.
+*   Artifacts saved: `data/auth_model.pkl`, `data/auth_scaler.pkl`, `data/auth_threshold.pkl`.
 
-### 4. Authenticate
+### 3. Authenticate
 
 Run the real-time verification loop.
 
 ```bash
 sudo python3 src/login.py
-
 ```
 
-### 5. Visualization (Optional)
+*   The system compares your live typing against the learned model.
+*   **Low Error:** Access Granted.
+*   **High Error:** Access Denied (Anomaly Detected).
 
-Generate a plot comparing your dwell/flight times against the imposter dataset.
+### 4. Visualization (Optional)
+
+Generate a plot comparing your dwell/flight times against a theoretical average.
 
 ```bash
 python3 src/visualize.py
-
 ```
 
 * Output: `data/typing_pattern.png`
@@ -81,8 +71,8 @@ python3 src/visualize.py
 | --- | --- |
 | `src/capture.py` | Handles low-level keyboard hooking and timestamp extraction. |
 | `src/data_collector.py` | CLI tool for building the positive dataset. |
-| `src/train.py` | Loads CSVs, scales features, and trains the Scikit-Learn MLP. |
-| `src/login.py` | Loads the pickle files and performs inference on live input. |
+| `src/train.py` | Trains the Autoencoder with Fuzzy Augmentation and calculates the threshold. |
+| `src/login.py` | Loads the model and performs real-time anomaly detection. |
 | `src/config.py` | Global constants (target phrase, file paths, model params). |
 | `web_collector/` | (Optional) HTML interface for browser-based data collection. |
 

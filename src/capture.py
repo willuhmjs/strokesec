@@ -6,7 +6,7 @@ import keyboard
 
 class KeystrokeCapture:
     """
-    Captures keystroke dynamics (dwell time and flight time).
+    Captures keystroke dynamics (hold time, UD flight, DD flight).
     """
     def __init__(self):
         self.press_times = {}
@@ -23,21 +23,47 @@ class KeystrokeCapture:
         if event.event_type == 'down':
             if k not in self.press_times:
                 self.press_times[k] = now
+            
+            # Calculate DD Flight (Time since last key PRESS)
+            dd_flight = 0.0
+            if self.current_record:
+                # Get the press time of the previous key (which is the last one in current_record)
+                # Note: current_record stores processed keys. The 'last' key pressed might not be fully processed 
+                # if it hasn't been released yet. 
+                # HOWEVER, for typing streams, we usually care about the sequence.
+                # Let's rely on the last APPENDED record for the "previous key".
+                # This assumes sequential typing (which is true for the password phrase).
+                last_press = self.current_record[-1]['press_ts']
+                dd_flight = now - last_press
+
+            # We store the press time temporarily to be added to the record on release
+            # Or we can track pending presses. 
+            # But since we build the record ON RELEASE (to get dwell time), we need to pass this DD info forward.
+            # A cleaner way: Store 'last_global_press_time' in the class.
+            
+            # actually, let's just wait for release to package everything.
 
         elif event.event_type == 'up':
             if k in self.press_times:
                 start_time = self.press_times.pop(k)
-                dwell = now - start_time
+                dwell = now - start_time # This is 'Hold' time
 
-                flight = 0.0
+                ud_flight = 0.0
+                dd_flight = 0.0
+                
                 if self.current_record:
                     last_release = self.current_record[-1]['release_ts']
-                    flight = start_time - last_release
+                    last_press = self.current_record[-1]['press_ts']
+                    
+                    ud_flight = start_time - last_release
+                    dd_flight = start_time - last_press
 
                 self.current_record.append({
                     'key': k,
-                    'dwell': dwell,
-                    'flight': flight,
+                    'hold': dwell,
+                    'ud': ud_flight,
+                    'dd': dd_flight,
+                    'press_ts': start_time,
                     'release_ts': now
                 })
 

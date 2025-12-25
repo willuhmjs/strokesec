@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.metrics import roc_curve, auc, confusion_matrix
-from config import DATA_DIR, KEYSTROKE_DATA_FILE, IMPOSTER_DATA_FILE, MODEL_FILE, VISUALIZATION_FILE, SCALER_FILE
+from config import DATA_DIR, KEYSTROKE_DATA_FILE, IMPOSTER_DATA_FILE, MODEL_FILE, VISUALIZATION_FILE, SCALER_FILE, THRESHOLD_FILE
 
 # Fix for headless servers (SSH)
 matplotlib.use('Agg')
@@ -23,51 +23,31 @@ def load_data():
     # 1. Load all user datasets found in DATA_DIR
     users_data = {}
     
-    # We look for all *_data.csv files but exclude imposter_data.csv and keystroke_data.csv
-    # wait, keystroke_data.csv is technically Will's data? Or is will_data.csv Will's data?
-    # Based on the list_files output:
-    # harrison_data.csv, imposter_data.csv, keystroke_data.csv, maximus_data.csv, tristan_data.csv, will_data.csv
-    # It seems keystroke_data.csv might be a duplicate or the main training file. 
-    # The prompt explicitly asked to analyze: will_data.csv, harrison_data.csv, tristan_data.csv, maximus_data.csv
-    
     pattern = os.path.join(DATA_DIR, "*_data.csv")
     all_files = glob.glob(pattern)
-    
-    # Specific users we want to target based on the prompt
-    # If specific files are present, we prefer those names.
-    # We will exclude 'imposter_data.csv' from the users list.
     
     for fpath in all_files:
         filename = os.path.basename(fpath)
         if filename == "imposter_data.csv":
             continue
         
-        # We can use the filename (minus _data.csv) as the label
-        # e.g. "will_data.csv" -> "will"
         if "_data.csv" in filename:
             user_name = filename.replace("_data.csv", "").capitalize()
-            # Special case: if keystroke_data.csv exists, treat it as "Main User (Training)" or skip if will_data.csv exists?
-            # The prompt says: "Update to match ... new data/ directory ... analyze all available user datasets (will_data.csv, harrison_data.csv, tristan_data.csv, maximus_data.csv)"
-            # So let's prioritize the specific names if they exist.
-            
-            # If both keystroke_data.csv and will_data.csv exist, and they are identical, we might duplicate.
-            # Let's trust the named files first.
             
             if filename == "keystroke_data.csv":
-                # We can skip this if we have named users, or include it as "Training Data"
-                # For now let's just include it if it's there, or maybe rename it to "Default"
-                # But looking at the prompt, it lists specific files.
-                # Let's include it as "Default" for now to be safe, but the named ones are priority.
-                user_name = "Default (keystroke_data)"
+                user_name = "Default (Training)"
             
-            df = pd.read_csv(fpath)
-            # Add a 'User' column for plotting
-            df['User'] = user_name
-            # Label for model (we treat all these as "positive" examples for visualization context, 
-            # though model training might only use one)
-            df['label'] = 1 
-            
-            users_data[user_name] = df
+            try:
+                df = pd.read_csv(fpath)
+                # Add a 'User' column for plotting
+                df['User'] = user_name
+                # Label for model (we treat all these as "positive" examples for visualization context, 
+                # though model training might only use one)
+                df['label'] = 1 
+                
+                users_data[user_name] = df
+            except Exception as e:
+                print(f"Skipping {filename}: {e}")
 
     # Combine all users into one dataframe for easy plotting with hue
     if users_data:
@@ -77,10 +57,15 @@ def load_data():
         all_users_df = pd.DataFrame()
 
     # 2. Load Imposter Data
+    # Note: Imposter data is now optional for training but useful for visualization
     if os.path.exists(IMPOSTER_DATA_FILE):
-        imposter_df = pd.read_csv(IMPOSTER_DATA_FILE)
-        imposter_df['User'] = 'Imposter'
-        imposter_df['label'] = 0
+        try:
+            imposter_df = pd.read_csv(IMPOSTER_DATA_FILE)
+            imposter_df['User'] = 'Imposter'
+            imposter_df['label'] = 0
+        except Exception as e:
+            print(f"Warning: Could not read imposter data: {e}")
+            imposter_df = pd.DataFrame()
     else:
         print("Warning: No imposter data found.")
         imposter_df = pd.DataFrame()
@@ -89,163 +74,180 @@ def load_data():
 
 def plot_typing_patterns(all_users_df, fig, gs):
     """
-    Plots dwell and flight time patterns comparing different users.
+    Plots dwell, flight, and hold time patterns comparing different users.
     """
     if all_users_df.empty:
         return
 
-    # Filter columns
-    dwell_cols = [c for c in all_users_df.columns if 'dwell' in c]
-    flight_cols = [c for c in all_users_df.columns if 'flight' in c]
+    # Filter columns based on new features: hold, ud, dd
+    hold_cols = [c for c in all_users_df.columns if '_hold' in c]
+    ud_cols = [c for c in all_users_df.columns if '_ud' in c]
+    dd_cols = [c for c in all_users_df.columns if '_dd' in c]
 
-    # We need to melt the dataframe to have "Key" and "Time" columns for seaborn
-    # But we also want to preserve "User".
-    # Since there are many keys, maybe we aggregate or pick top keys?
-    # Or we can plot the distribution of MEAN dwell/flight time per sample?
-    # The original script plotted boxplots of ALL keys side-by-side. 
-    # With multiple users, side-by-side for every key is too crowded (4 users * 20 keys = 80 boxes).
-    
-    # Better approach: Plot density of Average Dwell Time and Average Flight Time per sample per user.
-    # This gives a "fingerprint" summary.
-    
     # Calculate means per row
-    all_users_df['Mean Dwell'] = all_users_df[dwell_cols].mean(axis=1)
-    all_users_df['Mean Flight'] = all_users_df[flight_cols].mean(axis=1)
+    all_users_df['Mean Hold'] = all_users_df[hold_cols].mean(axis=1)
+    all_users_df['Mean UD'] = all_users_df[ud_cols].mean(axis=1)
+    all_users_df['Mean DD'] = all_users_df[dd_cols].mean(axis=1)
 
-    # 1. Dwell Time Distribution (KDE)
+    # 1. Hold Time Distribution (KDE)
     ax1 = fig.add_subplot(gs[0, 0])
-    sns.kdeplot(data=all_users_df, x='Mean Dwell', hue='User', fill=True, ax=ax1, palette="viridis", alpha=0.3)
-    ax1.set_title("Distribution of Mean Dwell Times", fontsize=14, fontweight='bold')
+    sns.kdeplot(data=all_users_df, x='Mean Hold', hue='User', fill=True, ax=ax1, palette="viridis", alpha=0.3)
+    ax1.set_title("Distribution of Mean Hold Times", fontsize=14, fontweight='bold')
     ax1.set_xlabel("Seconds")
     ax1.grid(True, alpha=0.3)
 
-    # 2. Flight Time Distribution (KDE)
+    # 2. UD (Up-Down) Flight Time Distribution (KDE)
     ax2 = fig.add_subplot(gs[0, 1])
-    sns.kdeplot(data=all_users_df, x='Mean Flight', hue='User', fill=True, ax=ax2, palette="viridis", alpha=0.3)
-    ax2.set_title("Distribution of Mean Flight Times", fontsize=14, fontweight='bold')
+    sns.kdeplot(data=all_users_df, x='Mean UD', hue='User', fill=True, ax=ax2, palette="viridis", alpha=0.3)
+    ax2.set_title("Distribution of Mean UD Flight Times", fontsize=14, fontweight='bold')
     ax2.set_xlabel("Seconds")
     ax2.grid(True, alpha=0.3)
 
-def plot_confidence_distribution(all_users_df, imposter_df, fig, gs):
+def plot_reconstruction_error(all_users_df, imposter_df, fig, gs):
     """
-    Plots the distribution of the model's prediction confidence for each user.
+    Plots the distribution of the Autoencoder's reconstruction error (MSE) for each user.
     """
-    if not os.path.exists(MODEL_FILE) or not os.path.exists(SCALER_FILE):
+    if not os.path.exists(MODEL_FILE) or not os.path.exists(SCALER_FILE) or not os.path.exists(THRESHOLD_FILE):
         return
 
-    # Load model and scaler
+    # Load artifacts
     with open(MODEL_FILE, "rb") as f:
         model = pickle.load(f)
     with open(SCALER_FILE, "rb") as f:
         scaler = pickle.load(f)
+    with open(THRESHOLD_FILE, "rb") as f:
+        threshold = pickle.load(f)
 
     # Combine data
-    # We want to see how the model treats EVERYONE (Users + Imposters)
     combined_df = pd.concat([all_users_df, imposter_df], ignore_index=True)
 
     # Prepare features
-    feature_cols = [c for c in combined_df.columns if c not in ['label', 'User', 'Mean Dwell', 'Mean Flight', 'Confidence Score']]
+    feature_cols = [c for c in combined_df.columns if c not in ['label', 'User', 'Mean Hold', 'Mean UD', 'Mean DD', 'MSE']]
     
     # Check model features if available
     if hasattr(model, "feature_names_in_"):
         model_features = model.feature_names_in_
     else:
+        # If feature names aren't saved, try to match by intersection or assume all remaining are features
+        # The scaler might know the number of features
         model_features = feature_cols
 
     # Ensure we have the right columns
-    # (Filter down to only what the model needs)
-    X = combined_df[model_features]
+    # We need to filter only the columns the model expects.
+    # If the model was trained on specific columns, we must use those.
+    # Assuming 'feature_cols' contains all the raw feature columns (k0_hold, k0_ud, etc.)
     
-    # Scale features
-    X_scaled = scaler.transform(X)
+    try:
+        X = combined_df[model_features]
+    except KeyError:
+        # Fallback: if names don't match, just take the first N columns where N is scaler's n_features_in_
+        if hasattr(scaler, "n_features_in_"):
+             X = combined_df.iloc[:, :scaler.n_features_in_]
+        else:
+             X = combined_df[feature_cols]
 
-    # Get probabilities (Confidence Scores)
-    # The model predicts probability of class 1 (Target User)
-    y_prob = model.predict_proba(X_scaled)[:, 1]
+    # Scale features
+    try:
+        X_scaled = scaler.transform(X)
+    except Exception as e:
+        print(f"Error scaling data for visualization: {e}")
+        return
+
+    # Reconstruct and Calculate MSE
+    X_reconstructed = model.predict(X_scaled)
+    mse_scores = np.mean(np.power(X_scaled - X_reconstructed, 2), axis=1)
     
-    combined_df['Confidence Score'] = y_prob
+    combined_df['MSE'] = mse_scores
 
     # Plot
-    # Spanning both columns for clarity
     ax = fig.add_subplot(gs[1, :]) 
     
-    sns.histplot(data=combined_df, x='Confidence Score', hue='User', element="step", stat="density", common_norm=False, ax=ax, palette="tab10", alpha=0.3)
-    # Also add KDE for smoothness
-    sns.kdeplot(data=combined_df, x='Confidence Score', hue='User', fill=False, common_norm=False, ax=ax, palette="tab10", linewidth=2, warn_singular=False)
+    # Histogram + KDE
+    sns.histplot(data=combined_df, x='MSE', hue='User', element="step", stat="density", common_norm=False, ax=ax, palette="tab10", alpha=0.3)
+    sns.kdeplot(data=combined_df, x='MSE', hue='User', fill=False, common_norm=False, ax=ax, palette="tab10", linewidth=2, warn_singular=False)
     
-    ax.axvline(0.85, color='red', linestyle='--', linewidth=2, label='Threshold (0.85)')
-    ax.set_title("Model Confidence Distribution (User Identity)", fontsize=14, fontweight='bold')
-    ax.set_xlabel("Probability of being Target User (0.0 - 1.0)")
-    ax.set_xlim(0, 1)
+    ax.axvline(threshold, color='red', linestyle='--', linewidth=2, label=f'Threshold ({threshold:.4f})')
+    
+    # Annotation for Safe Zone vs Anomaly Zone
+    # ax.text(threshold * 0.5, ax.get_ylim()[1]*0.9, "Safe Zone (Low Error)", color='green', ha='center')
+    # ax.text(threshold * 1.5, ax.get_ylim()[1]*0.9, "Anomaly Zone (High Error)", color='red', ha='center')
+
+    ax.set_title("Reconstruction Error Distribution (MSE)", fontsize=14, fontweight='bold')
+    ax.set_xlabel("Mean Squared Error (Lower is better)")
     ax.legend()
     ax.grid(True, alpha=0.3)
+    
+    # Log scale might be useful if outliers are huge, but let's stick to linear first or limit x
+    # ax.set_xscale('log') 
 
 def plot_model_performance(all_users_df, imposter_df, fig, gs):
     """
-    Plots ROC and Confusion Matrix.
-    WARNING: This assumes the model was trained on ONE of these users (likely Will/Default).
-    We should probably only use the 'Default' or 'Will' data for the True Positive part of the ROC/CM 
-    to honestly evaluate the trained model, unless we retrained it on everyone (which we didn't).
-    
-    We will assume 'Will' or 'Default' is the target user.
+    Plots ROC and Confusion Matrix based on MSE Thresholding.
     """
-    if imposter_df.empty or not os.path.exists(MODEL_FILE):
+    if imposter_df.empty or not os.path.exists(MODEL_FILE) or not os.path.exists(THRESHOLD_FILE):
         return
 
-    # Identify the target user for the model evaluation
-    # We look for "Will" or "Default" in the users
-    target_user_keys = [u for u in all_users_df['User'].unique() if 'Will' in u or 'Default' in u]
+    # Identify the target user (The one the model was trained on)
+    # Usually "Default (Training)" or "Will"
+    target_user_keys = [u for u in all_users_df['User'].unique() if 'Training' in u or 'Will' in u]
     if not target_user_keys:
-        # Fallback: just take the first one if we can't find Will
         target_user_keys = [all_users_df['User'].unique()[0]]
     
     target_user_df = all_users_df[all_users_df['User'].isin(target_user_keys)]
     
-    print(f"Evaluating model performance against: {target_user_keys}")
+    print(f"Evaluating model performance against target: {target_user_keys}")
 
-    # Prepare data for evaluation: Target User (1) vs Imposters (0)
-    # We ignore other users here because they are technically "Imposters" to Will's model, 
-    # but we don't label them as 0 to avoid confusing the existing Imposter dataset visualization.
-    # Actually, treating other users as 0 (imposters) is a GREAT test of the model!
-    # Let's add other users to the "Negative" class for the ROC curve?
-    # Prompt didn't explicitly ask for cross-user verification, just "Visualization".
-    # Let's stick to the standard Real vs Fake (generated) for consistency, 
-    # but maybe add a note or line for other users if easy.
-    # For simplicity/safety: Use Target User vs Imposter_Data.
+    # Combine Target User (Positive) and Imposters (Negative)
+    # We treat all other users as Imposters for this evaluation if we wanted, 
+    # but strictly speaking, we want to test Target vs Imposter Dataset first.
+    
+    # 1 (True) = Target User, 0 (False) = Imposter
+    target_user_df = target_user_df.copy()
+    target_user_df['label'] = 1
+    
+    imposter_df = imposter_df.copy()
+    imposter_df['label'] = 0
     
     eval_data = pd.concat([target_user_df, imposter_df], ignore_index=True)
     
-    feature_cols = [c for c in eval_data.columns if c not in ['label', 'User', 'Mean Dwell', 'Mean Flight']]
-    # Ensure we only have numeric columns matching the model
-    # (The model expects specific columns. The loaded DF might have extra ones now.)
-    
-    # Load model to check expected features if possible, or just rely on intersection
+    # Prepare X and y
     with open(MODEL_FILE, "rb") as f:
         model = pickle.load(f)
-    
-    # Load scaler again (or pass it, but simpler to reload here to be self-contained)
     with open(SCALER_FILE, "rb") as f:
         scaler = pickle.load(f)
+    with open(THRESHOLD_FILE, "rb") as f:
+        threshold = pickle.load(f)
 
-    # Get features model expects
+    # Feature extraction (same as above)
+    feature_cols = [c for c in eval_data.columns if c not in ['label', 'User', 'Mean Hold', 'Mean UD', 'Mean DD', 'MSE']]
     if hasattr(model, "feature_names_in_"):
         model_features = model.feature_names_in_
+        X = eval_data[model_features]
     else:
-        # Fallback if feature names aren't saved (older sklearn)
-        model_features = feature_cols
-        
-    # Filter X to match model features
-    X = eval_data[model_features]
-    y = eval_data['label']
+        if hasattr(scaler, "n_features_in_"):
+             X = eval_data.iloc[:, :scaler.n_features_in_]
+        else:
+             X = eval_data[feature_cols]
 
+    y_true = eval_data['label']
+
+    # Predict
     X_scaled = scaler.transform(X)
-
-    y_prob = model.predict_proba(X_scaled)[:, 1]
-    y_pred = model.predict(X_scaled)
+    X_reconstructed = model.predict(X_scaled)
+    mse_scores = np.mean(np.power(X_scaled - X_reconstructed, 2), axis=1)
 
     # 3. ROC Curve
+    # For Autoencoder anomaly detection, "Score" is usually -MSE (higher score = more normal)
+    # or we can just flip the logic: 
+    # Positive Class (User) should have LOW MSE. Negative Class (Imposter) should have HIGH MSE.
+    # To use standard ROC function which expects higher values for Positive class:
+    # We can use a similarity score = exp(-MSE) or 1 / (1+MSE)
+    # Or just negative MSE.
+    
+    y_score = -mse_scores # Higher (less negative) is better (lower error)
+
     ax3 = fig.add_subplot(gs[2, 0])
-    fpr, tpr, _ = roc_curve(y, y_prob)
+    fpr, tpr, _ = roc_curve(y_true, y_score)
     roc_auc = auc(fpr, tpr)
 
     ax3.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
@@ -254,16 +256,29 @@ def plot_model_performance(all_users_df, imposter_df, fig, gs):
     ax3.set_ylim([0.0, 1.05])
     ax3.set_xlabel('False Positive Rate')
     ax3.set_ylabel('True Positive Rate')
-    ax3.set_title('ROC (Target User vs Generated Imposters)', fontsize=14, fontweight='bold')
+    ax3.set_title('ROC (Target vs Imposters)', fontsize=14, fontweight='bold')
     ax3.legend(loc="lower right")
     ax3.grid(True, alpha=0.3)
 
     # 4. Confusion Matrix
+    # Using the fixed Threshold
+    # If MSE <= Threshold -> Predicted 1 (User)
+    # If MSE > Threshold -> Predicted 0 (Imposter)
+    y_pred = (mse_scores <= threshold).astype(int)
+
     ax4 = fig.add_subplot(gs[2, 1])
-    cm = confusion_matrix(y, y_pred)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Greens', ax=ax4,
+    cm = confusion_matrix(y_true, y_pred)
+    
+    # Label formatting
+    group_names = ['True Neg','False Pos','False Neg','True Pos']
+    group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+    group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+    labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names,group_counts,group_percentages)]
+    labels = np.asarray(labels).reshape(2,2)
+
+    sns.heatmap(cm, annot=labels, fmt='', cmap='Greens', ax=ax4,
                 xticklabels=['Imposter', 'User'], yticklabels=['Imposter', 'User'])
-    ax4.set_title('Confusion Matrix', fontsize=14, fontweight='bold')
+    ax4.set_title('Confusion Matrix (Fixed Threshold)', fontsize=14, fontweight='bold')
     ax4.set_ylabel('True Label')
     ax4.set_xlabel('Predicted Label')
 
@@ -280,15 +295,14 @@ def visualize(output=VISUALIZATION_FILE):
     sns.set_theme(style="whitegrid")
     
     # Create a figure with a grid specification
-    # Increased height to accommodate new plot
     fig = plt.figure(figsize=(20, 22)) 
     gs = fig.add_gridspec(3, 2)
 
     # Plot patterns (Row 0)
     plot_typing_patterns(all_users_df, fig, gs)
     
-    # Plot Confidence Distribution (Row 1)
-    plot_confidence_distribution(all_users_df, imposter_df, fig, gs)
+    # Plot Reconstruction Error (Row 1)
+    plot_reconstruction_error(all_users_df, imposter_df, fig, gs)
 
     # Plot performance (Row 2)
     plot_model_performance(all_users_df, imposter_df, fig, gs)
@@ -304,3 +318,4 @@ def visualize(output=VISUALIZATION_FILE):
 
 if __name__ == "__main__":
     visualize()
+

@@ -25,10 +25,14 @@ def select_profile():
         return KEYSTROKE_DATA_FILE
     if choice == '2':
         return IMPOSTER_DATA_FILE
+    if choice == '3':
+        from config import DATA_DIR
+        name = input("Enter your name (e.g. 'alice'): ").strip().lower()
+        return os.path.join(DATA_DIR, f"{name}_data.csv")
     
-    from config import DATA_DIR
-    name = input("Enter your name (e.g. 'alice'): ").strip().lower()
-    return os.path.join(DATA_DIR, f"{name}_data.csv")
+    # Fallback/Default
+    print("Invalid choice. Defaulting to keystroke_data.csv")
+    return KEYSTROKE_DATA_FILE
 
 # --- MAIN SETUP ---
 filename = select_profile()
@@ -37,7 +41,7 @@ filename = select_profile()
 if os.path.exists(filename):
     try:
         existing_df = pd.read_csv(filename)
-        expected_cols = REQUIRED_LENGTH * 2
+        expected_cols = REQUIRED_LENGTH * 3
         if len(existing_df.columns) != expected_cols:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_name = f"{filename.replace('.csv', '')}_backup_{timestamp}.csv"
@@ -85,8 +89,9 @@ for attempt in records:
     for i, stroke in enumerate(attempt):
         # We only save up to REQUIRED_LENGTH, though logic ensures they are equal
         if i < REQUIRED_LENGTH:
-            row[f'k{i}_dwell'] = stroke['dwell']
-            row[f'k{i}_flight'] = stroke['flight']
+            row[f'k{i}_hold'] = stroke['hold']
+            row[f'k{i}_ud'] = stroke['ud']
+            row[f'k{i}_dd'] = stroke['dd']
     processed_data.append(row)
 
 if processed_data:

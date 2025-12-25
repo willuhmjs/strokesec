@@ -4,38 +4,38 @@ Shared utility functions for the Keystroke Dynamics Authentication System.
 import os
 import sys
 import pickle
-import numpy as np
+import torch
 import pandas as pd
+import numpy as np
+from model import KeystrokeAutoencoder # Import the class definition
 from config import REQUIRED_LENGTH
 
 def load_artifacts(model_path, scaler_path, threshold_path):
     """
-    Loads the trained authentication model, scaler, and threshold.
-    
-    Args:
-        model_path (str): Path to the pickled model file.
-        scaler_path (str): Path to the pickled scaler file.
-        threshold_path (str): Path to the pickled threshold file.
-        
-    Returns:
-        tuple: (model, scaler, threshold)
+    Loads PyTorch model, scaler, and threshold.
+    Returns: (model, scaler, threshold)
     """
     if not os.path.exists(model_path):
-        print(f"Error: {model_path} not found. Run train.py first!")
-        sys.exit(1)
-    if not os.path.exists(scaler_path):
-        print(f"Error: {scaler_path} not found. Run train.py first!")
-        sys.exit(1)
-    if not os.path.exists(threshold_path):
-        print(f"Error: {threshold_path} not found. Run train.py first!")
+        print(f"Error: {model_path} not found.")
         sys.exit(1)
         
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
+    # Load Scaler and Threshold
     with open(scaler_path, "rb") as f:
         scaler = pickle.load(f)
     with open(threshold_path, "rb") as f:
         threshold = pickle.load(f)
+
+    # Load PyTorch Model
+    try:
+        checkpoint = torch.load(model_path)
+        input_dim = checkpoint['input_dim']
+        
+        model = KeystrokeAutoencoder(input_dim)
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval() # Set to evaluation mode immediately
+    except Exception as e:
+        print(f"Failed to load PyTorch model: {e}")
+        sys.exit(1)
         
     return model, scaler, threshold
 

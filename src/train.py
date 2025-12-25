@@ -1,139 +1,157 @@
 """
-Training script for the Keystroke Dynamics Authentication model (Autoencoder).
+Professional training script using PyTorch with Early Stopping and Checkpointing.
 """
-import pickle
 import sys
-import pandas as pd
+import argparse
+import pickle
 import numpy as np
-from sklearn.neural_network import MLPRegressor
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-import argparse
+
 from config import KEYSTROKE_DATA_FILE, MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
 from utils import augment_data
+from model import KeystrokeAutoencoder
 
-# 0. PARSE ARGUMENTS
-# ------------------
-parser = argparse.ArgumentParser(description="Train the Keystroke Dynamics Autoencoder.")
-parser.add_argument("input_file", nargs="?", default=str(KEYSTROKE_DATA_FILE), help="Path to the positive user data CSV (default: from config).")
-parser.add_argument("--model", default=str(MODEL_FILE), help="Path to save the trained model (default: from config).")
-parser.add_argument("--scaler", default=str(SCALER_FILE), help="Path to save the scaler (default: from config).")
-parser.add_argument("--threshold", default=str(THRESHOLD_FILE), help="Path to save the threshold (default: from config).")
-args = parser.parse_args()
+# Training Configuration
+BATCH_SIZE = 32
+LEARNING_RATE = 1e-3
+MAX_EPOCHS = 300
+PATIENCE = 20  # For early stopping
+
+def train_model(X_train, X_val, input_dim):
+    # Prepare DataLoaders
+    train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(X_train))
+    val_dataset = TensorDataset(torch.FloatTensor(X_val), torch.FloatTensor(X_val))
+    
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    
+    # Initialize Model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = KeystrokeAutoencoder(input_dim).to(device)
+    
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
+    
+    best_val_loss = float('inf')
+    patience_counter = 0
+    best_model_state = None
+    
+    print(f"Device: {device} | Input Dim: {input_dim}")
+    print("-" * 60)
+
+    for epoch in range(MAX_EPOCHS):
+        # --- Training Step ---
+        model.train()
+        train_loss = 0.0
+        for batch_features, _ in train_loader:
+            batch_features = batch_features.to(device)
+            
+            optimizer.zero_grad()
+            outputs = model(batch_features)
+            loss = criterion(outputs, batch_features)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item() * batch_features.size(0)
+            
+        train_loss /= len(train_loader.dataset)
+        
+        # --- Validation Step ---
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for batch_features, _ in val_loader:
+                batch_features = batch_features.to(device)
+                outputs = model(batch_features)
+                loss = criterion(outputs, batch_features)
+                val_loss += loss.item() * batch_features.size(0)
+        
+        val_loss /= len(val_loader.dataset)
+
+        # --- Early Stopping Logic ---
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_model_state = model.state_dict()
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch:03d}: Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
+            
+        if patience_counter >= PATIENCE:
+            print(f"Early stopping at epoch {epoch}")
+            break
+
+    # Load best weights
+    model.load_state_dict(best_model_state)
+    return model
 
 if __name__ == "__main__":
-    POSITIVE_DATA_FILE = args.input_file
-    OUTPUT_MODEL_FILE = args.model
-    OUTPUT_SCALER_FILE = args.scaler
-    OUTPUT_THRESHOLD_FILE = args.threshold
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file", nargs="?", default=str(KEYSTROKE_DATA_FILE))
+    parser.add_argument("--model", default=str(MODEL_FILE))
+    parser.add_argument("--scaler", default=str(SCALER_FILE))
+    parser.add_argument("--threshold", default=str(THRESHOLD_FILE))
+    args = parser.parse_args()
 
-    print(f"Training on: {POSITIVE_DATA_FILE}")
-    print(f"Saving model to: {OUTPUT_MODEL_FILE}")
-    print(f"Saving scaler to: {OUTPUT_SCALER_FILE}")
-    print(f"Saving threshold to: {OUTPUT_THRESHOLD_FILE}")
-
-    # 1. LOAD POSITIVE DATA
-    # ---------------------
+    # 1. Load Data
     try:
-        real_user = pd.read_csv(POSITIVE_DATA_FILE)
+        df = pd.read_csv(args.input_file)
     except FileNotFoundError:
-        print(f"Error: '{POSITIVE_DATA_FILE}' not found. Record your data first!")
+        print("Data file not found.")
         sys.exit(1)
-
-    print(f"Loaded {len(real_user)} samples from User.")
-
-    # Identify feature columns (all columns in the new CSV structure are features)
-    feature_cols = list(real_user.columns)
-    X_real = real_user[feature_cols]
-
-    # 2. SPLIT DATA
-    # -------------
-    # We split real data into Train (for model learning) and Test (for threshold calculation/validation)
+        
+    X_real = df.values
+    
+    # 2. Split
     X_train_raw, X_test_raw = train_test_split(X_real, test_size=0.2, random_state=42)
-
-    # 3. FUZZY AUGMENTATION (Level 3)
-    # -------------------------------
+    
+    # 3. Augment (Only Train Data)
     print(f"Augmenting data... (Original: {len(X_train_raw)})")
-    X_train_augmented = augment_data(X_train_raw)
-    print(f"Augmented Training Set Size: {len(X_train_augmented)}")
-
-    # 4. SCALE
-    # --------
+    # Note: augment_data returns a dataframe, we convert to numpy
+    X_train_aug_df = augment_data(pd.DataFrame(X_train_raw, columns=df.columns))
+    X_train_aug = X_train_aug_df.values
+    
+    # 4. Scale
     scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train_augmented)
-    # Scale test data using the SAME scaler
-    X_test = scaler.transform(X_test_raw)
-
-    # 5. TRAIN AUTOENCODER (Level 2)
-    # ------------------------------
-    # Architecture: Input -> Enc -> Bottleneck -> Dec -> Output
-    # Input Size = N
-    # Hidden Layers = [N/2, N/4, N/2]
-    n_features = X_train.shape[1]
-    hidden_layers = (int(n_features / 2), int(n_features / 4), int(n_features / 2))
-
-    print(f"Training Autoencoder with architecture: Input({n_features}) -> {hidden_layers} -> Output({n_features})")
-
-    # MLPRegressor aims to predict the INPUT (identity function), minimizing reconstruction error
-    model = MLPRegressor(
-        hidden_layer_sizes=hidden_layers,
-        activation='relu',
-        solver='adam',
-        max_iter=5000,
-        random_state=42,
-        alpha=0.0001 # L2 regularization
-    )
-
-    model.fit(X_train, X_train) # Target is X_train itself
-
-    # 6. CALCULATE THRESHOLD
-    # ----------------------
-    print("\nCalculating Threshold on Validation Set...")
-    # We use the REAL user validation set (X_test) to determine the acceptable error range.
-    # We do NOT use augmented data here, as we want the threshold to be tight to the real user.
-
-    X_test_reconstructed = model.predict(X_test)
-    # Calculate MSE for each sample individually
-    mse_scores = np.mean(np.power(X_test - X_test_reconstructed, 2), axis=1)
-
+    X_train_scaled = scaler.fit_transform(X_train_aug)
+    X_test_scaled = scaler.transform(X_test_raw)
+    
+    # 5. Train
+    input_dim = X_train_scaled.shape[1]
+    model = train_model(X_train_scaled, X_test_scaled, input_dim)
+    
+    # 6. Calculate Threshold (using clean validation data)
+    model.eval()
+    with torch.no_grad():
+        X_val_tensor = torch.FloatTensor(X_test_scaled)
+        reconstructed = model(X_val_tensor).numpy()
+        
+    mse_scores = np.mean(np.power(X_test_scaled - reconstructed, 2), axis=1)
     mean_mse = np.mean(mse_scores)
     std_mse = np.std(mse_scores)
-
-    # Design Spec: Threshold = Mean + 2 * StdDev
-    threshold = mean_mse + 2 * std_mse
-
-    print(f"Mean MSE: {mean_mse:.6f}")
-    print(f"Std MSE:  {std_mse:.6f}")
-    print(f"Calculated Threshold: {threshold:.6f}")
-
-    print("\nSimulating Inference on Validation Data:")
-    print("-" * 30)
-    approvals = 0
-    denials = 0
     
-    for i, mse in enumerate(mse_scores):
-        status = "✅ ACCESS GRANTED" if mse <= threshold else "⛔ ACCESS DENIED"
-        if mse <= threshold:
-            approvals += 1
-        else:
-            denials += 1
-        print(f"Sample {i+1}: MSE={mse:.6f} -> {status}")
-        
-    print("-" * 30)
-    print(f"Validation Results: {approvals} Approved, {denials} Denied")
-    if denials > 0:
-        print(f"Note: {denials} legitimate samples were rejected (False Rejection). Consider increasing threshold multiplier if too high.")
+    # Strict threshold: Mean + 1.5 StdDev (Tweak multiplier as needed)
+    threshold = mean_mse + 1.5 * std_mse
+    
+    print(f"\nFinal Threshold: {threshold:.6f} (Mean: {mean_mse:.6f}, Std: {std_mse:.6f})")
 
-    # 7. SAVE ARTIFACTS
-    # -----------------
-    with open(OUTPUT_MODEL_FILE, "wb") as f:
-        pickle.dump(model, f)
-    print(f"\nModel saved to '{OUTPUT_MODEL_FILE}'")
-
-    with open(OUTPUT_SCALER_FILE, "wb") as f:
+    # 7. Save Artifacts
+    # Save State Dict for PyTorch
+    torch.save({
+        'state_dict': model.state_dict(),
+        'input_dim': input_dim  # Save dim to recreate model structure later
+    }, args.model)
+    
+    with open(args.scaler, "wb") as f:
         pickle.dump(scaler, f)
-    print(f"Scaler saved to '{OUTPUT_SCALER_FILE}'")
-
-    with open(OUTPUT_THRESHOLD_FILE, "wb") as f:
+    with open(args.threshold, "wb") as f:
         pickle.dump(threshold, f)
-    print(f"Threshold saved to '{OUTPUT_THRESHOLD_FILE}'")
+
+    print("Artifacts saved successfully.")

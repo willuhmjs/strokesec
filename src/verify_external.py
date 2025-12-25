@@ -5,6 +5,7 @@ import sys
 import argparse
 import pandas as pd
 import numpy as np
+import torch
 from config import MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
 from utils import load_artifacts, check_columns
 
@@ -42,10 +43,13 @@ def verify_external_data(csv_path, model, scaler, threshold):
         
         try:
             # Scale the input
-            sample_scaled = scaler.transform(sample)
+            sample_scaled = scaler.transform(sample.values)
             
-            # Reconstruct (Predict)
-            sample_reconstructed = model.predict(sample_scaled)
+            # Reconstruct (Predict) with PyTorch
+            input_tensor = torch.FloatTensor(sample_scaled)
+            with torch.no_grad():
+                reconstructed_tensor = model(input_tensor)
+            sample_reconstructed = reconstructed_tensor.numpy()
             
             # Calculate MSE
             mse = np.mean(np.power(sample_scaled - sample_reconstructed, 2))

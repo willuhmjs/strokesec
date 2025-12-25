@@ -3,3 +3,4 @@ matplotlib
 keyboard
 seaborn
 scikit-learn
+torch

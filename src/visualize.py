@@ -7,9 +7,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
+import torch
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 from config import DATA_DIR, MODEL_FILE, VISUALIZATION_FILE, SCALER_FILE, THRESHOLD_FILE
-from utils import check_columns
+from utils import check_columns, load_artifacts
 
 # Fix for headless servers (SSH)
 matplotlib.use('Agg')
@@ -104,29 +105,24 @@ def plot_reconstruction_error(all_users_df, fig, gs):
         print("Model artifacts not found. Skipping MSE plot.")
         return
 
-    # Load artifacts
-    with open(MODEL_FILE, "rb") as f:
-        model = pickle.load(f)
-    with open(SCALER_FILE, "rb") as f:
-        scaler = pickle.load(f)
-    with open(THRESHOLD_FILE, "rb") as f:
-        threshold = pickle.load(f)
+    # Load artifacts using shared utility (handles PyTorch loading)
+    try:
+        model, scaler, threshold = load_artifacts(MODEL_FILE, SCALER_FILE, THRESHOLD_FILE)
+    except Exception as e:
+        print(f"Failed to load artifacts: {e}")
+        return
 
     # Prepare features
     # Exclude metadata columns
     meta_cols = ['label', 'User', 'Mean Hold', 'Mean UD', 'Mean DD', 'MSE']
     feature_cols = [c for c in all_users_df.columns if c not in meta_cols]
     
-    # Check model features if available
-    if hasattr(model, "feature_names_in_"):
-        model_features = model.feature_names_in_
-    else:
-        # Fallback to all available feature columns
-        model_features = feature_cols
+    # In PyTorch, we don't store feature names directly in the model object in the same way,
+    # so we rely on the scaler or use all available feature columns that match.
+    # The check_columns utility already standardized the columns.
+    model_features = feature_cols
 
     # Filter/Order columns to match model input
-    # If a column is missing (e.g. data file is older/different), this might fail
-    # but check_columns should have handled most structure issues.
     try:
         X = all_users_df[model_features]
     except KeyError as e:
@@ -135,13 +131,18 @@ def plot_reconstruction_error(all_users_df, fig, gs):
 
     # Scale features
     try:
-        X_scaled = scaler.transform(X)
+        # Transform using values to avoid feature name mismatch warnings if scaler was fitted on numpy
+        X_scaled = scaler.transform(X.values)
     except Exception as e:
         print(f"Error scaling data for visualization: {e}")
         return
 
-    # Reconstruct and Calculate MSE
-    X_reconstructed = model.predict(X_scaled)
+    # Reconstruct and Calculate MSE (PyTorch)
+    input_tensor = torch.FloatTensor(X_scaled)
+    with torch.no_grad():
+        reconstructed_tensor = model(input_tensor)
+    
+    X_reconstructed = reconstructed_tensor.numpy()
     mse_scores = np.mean(np.power(X_scaled - X_reconstructed, 2), axis=1)
     
     all_users_df['MSE'] = mse_scores

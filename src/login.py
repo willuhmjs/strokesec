@@ -13,10 +13,10 @@ from capture import KeystrokeCapture
 def load_model_and_scaler(model_path, scaler_path):
     """Loads the trained authentication model and scaler."""
     if not os.path.exists(model_path):
-        print(f"Error: {model_path} not found. Run train_model.py first!")
+        print(f"Error: {model_path} not found. Run train.py first!")
         sys.exit(1)
     if not os.path.exists(scaler_path):
-        print(f"Error: {scaler_path} not found. Run train_model.py first!")
+        print(f"Error: {scaler_path} not found. Run train.py first!")
         sys.exit(1)
         
     with open(model_path, "rb") as f:

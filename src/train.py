@@ -12,6 +12,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report
 import argparse
 from config import KEYSTROKE_DATA_FILE, IMPOSTER_DATA_FILE, MODEL_FILE, SCALER_FILE
+import generate_imposters
+import visualize
 
 # 0. PARSE ARGUMENTS
 # ------------------
@@ -29,7 +31,11 @@ print(f"Training on: {POSITIVE_DATA_FILE}")
 print(f"Saving model to: {OUTPUT_MODEL_FILE}")
 print(f"Saving scaler to: {OUTPUT_SCALER_FILE}")
 
-# 1. LOAD POSITIVE DATA (YOU)
+# 1. GENERATE IMPOSTER DATA
+# ---------------------------
+generate_imposters.generate_imposter_data()
+
+# 2. LOAD POSITIVE DATA (YOU)
 # ---------------------------
 if not os.path.exists(POSITIVE_DATA_FILE):
     print(f"Error: '{POSITIVE_DATA_FILE}' not found. Record your data first!")
@@ -39,96 +45,92 @@ real_user = pd.read_csv(POSITIVE_DATA_FILE)
 real_user['label'] = 1 
 print(f"Loaded {len(real_user)} samples from YOU.")
 
-# 2. LOAD NEGATIVE DATA (IMPOSTERS)
+# 3. LOAD NEGATIVE DATA (IMPOSTERS)
 # ---------------------------------
-# Strategy: Prefer Real Imposters. Fallback to Synthetic Randomness.
-
 if os.path.exists(IMPOSTER_DATA_FILE):
-    print("Found REAL imposter data. Using it.")
+    print("Found imposter data. Using it.")
     fake_user = pd.read_csv(IMPOSTER_DATA_FILE)
     fake_user['label'] = 0
 else:
-    print("No real imposter data found. Generating 'Random Stranger' data...")
-    
-    feature_cols = [c for c in real_user.columns if c != 'label']
-    n_imposters = len(real_user) # Balance the classes 50/50
-
-    fake_data = []
-    for _ in range(n_imposters):
-        row = {}
-        for col in feature_cols:
-            if 'dwell' in col:
-                # Random hold: 50ms to 400ms
-                row[col] = np.random.uniform(0.05, 0.4) 
-            elif 'flight' in col:
-                # Random flight: 0ms to 500ms
-                row[col] = np.random.uniform(0.0, 0.5)
-        row['label'] = 0
-        fake_data.append(row)
-
-    fake_user = pd.DataFrame(fake_data)
+    print("Error: Imposter data file missing even after generation attempt.")
+    sys.exit(1)
 
 print(f"Loaded {len(fake_user)} imposter samples.")
 
-# 3. TRAIN
+# 4. SPLIT AND BALANCE (CRITICAL FIX)
+# -----------------------------------
+# We must split BEFORE oversampling to prevent data leakage (cheating).
+# We split real and fake separately, then balance only the training data.
+
+# A. Identify feature columns
+feature_cols = [c for c in real_user.columns if c != 'label']
+
+# B. Split Real User Data (80% Train, 20% Test)
+real_train, real_test = train_test_split(real_user, test_size=0.2, random_state=42)
+
+# C. Split Imposter Data (80% Train, 20% Test)
+fake_train, fake_test = train_test_split(fake_user, test_size=0.2, random_state=42)
+
+# D. Oversample Real User Training Data
+# We duplicate real_train rows until they match the count of fake_train
+print(f"\n--- BALANCING DATA ---")
+print(f"Original Training Split -> Real: {len(real_train)}, Imposter: {len(fake_train)}")
+
+real_train_oversampled = real_train.sample(n=len(fake_train), replace=True, random_state=42)
+print(f"Oversampled Training Split -> Real: {len(real_train_oversampled)}, Imposter: {len(fake_train)}")
+
+# E. Combine into final sets
+train_data = pd.concat([real_train_oversampled, fake_train], ignore_index=True)
+test_data = pd.concat([real_test, fake_test], ignore_index=True)
+
+X_train_raw = train_data[feature_cols]
+y_train = train_data['label']
+
+X_test_raw = test_data[feature_cols]
+y_test = test_data['label']
+
+# 5. SCALE
 # --------
-data = pd.concat([real_user, fake_user], ignore_index=True)
-# Ensure we only use feature columns (exclude label)
-feature_cols = [c for c in data.columns if c != 'label']
-X = data[feature_cols]
-y = data['label']
-
-# Scale the data
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+# Fit only on training data
+X_train = scaler.fit_transform(X_train_raw)
+# Transform test data using the training scaler
+X_test = scaler.transform(X_test_raw)
 
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
-
-# MLP: 32 neurons -> 16 neurons
-# Increased max_iter for convergence
-model = MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=2000, random_state=42, learning_rate_init=0.001)
+# 6. TRAIN
+# --------
+# MLP: Simplified architecture to prevent overfitting
+# Reduced to single layer of 5 neurons and increased alpha for regularization
+model = MLPClassifier(hidden_layer_sizes=(5,), alpha=0.5, max_iter=3000, random_state=42, learning_rate_init=0.001)
 
 print("\nTraining Neural Network...")
 model.fit(X_train, y_train)
 
-# 4. TEST (Validation Split)
-# ------------------------
+# 7. TEST (Internal Validation)
+# -----------------------------
 predictions = model.predict(X_test)
-print("\n--- INTERNAL VALIDATION RESULTS (Split from Training Data) ---")
+print("\n--- INTERNAL VALIDATION RESULTS (Strict Split) ---")
 print(classification_report(y_test, predictions, target_names=["Imposter", "Real User"]))
 
-# 5. VERIFY AGAINST REAL HUMANS (Comprehensive Human Validation)
+# 8. VERIFY AGAINST REAL HUMANS (Comprehensive Human Validation)
 # --------------------------------------------------------------
 print("\n--- HUMAN VALIDATION REPORT ---")
 from config import DATA_DIR
 import glob
 
-# Auto-detect all CSV files in data directory to use for validation
 validation_datasets = {}
 search_pattern = os.path.join(DATA_DIR, "*_data.csv")
 files = glob.glob(search_pattern)
 
-# Determine the training user name from the input file
 train_file_base = os.path.basename(POSITIVE_DATA_FILE)
 
 for filename in files:
     base_name = os.path.basename(filename)
-    
-    # Skip the imposter data file used for training
     if base_name == "imposter_data.csv":
         continue
         
-    # Skip the main training file itself? 
-    # Usually we want to see how well it performs on the training user (should be ~100% approved)
-    # The original script had "Will (Owner)" explicitly.
-    # We will include everyone found.
-    
-    # Heuristic for name: remove _data.csv and capitalize
     persona_name = base_name.replace("_data.csv", "").capitalize()
     
-    # If this file is the POSITIVE_DATA_FILE, expect 1 (Real User)
-    # Otherwise expect 0 (Imposter)
-    # Note: POSITIVE_DATA_FILE might be absolute or relative, so compare basenames
     if base_name == train_file_base:
         expected = 1
         display_name = f"{persona_name} (Owner)"
@@ -138,26 +140,17 @@ for filename in files:
 
     validation_datasets[display_name] = {"file": filename, "expected": expected}
 
-# Print Table Header
 print(f"{'User Name':<20} | {'Total':<8} | {'Approved':<10} | {'Rejected':<10} | {'Pass Rate':<12}")
 print("-" * 75)
 
 for name, info in validation_datasets.items():
     csv_file = info["file"]
-    expected_label = info["expected"]
     
     if os.path.exists(csv_file):
         try:
             df_val = pd.read_csv(csv_file)
-            
-            # Filter to feature_cols to match training features exactly
-            # (Silently ignore extra cols, fail if missing cols)
             X_val = df_val[feature_cols]
-            
-            # Scale
             X_val_scaled = scaler.transform(X_val)
-            
-            # Predict
             preds_val = model.predict(X_val_scaled)
             
             total = len(preds_val)
@@ -165,18 +158,14 @@ for name, info in validation_datasets.items():
             rejected = np.sum(preds_val == 0)
             pass_rate = (approved / total) * 100 if total > 0 else 0
             
-            # Color/Status indicator could be added, but simple table for now
             print(f"{name:<20} | {total:<8} | {approved:<10} | {rejected:<10} | {pass_rate:6.2f}%")
             
         except Exception as e:
             print(f"{name:<20} | ERROR: {str(e)}")
-    else:
-        print(f"{name:<20} | FILE NOT FOUND ({csv_file})")
 
 print("-" * 75)
 
-
-# 6. SAVE
+# 9. SAVE
 # -------
 with open(OUTPUT_MODEL_FILE, "wb") as f:
     pickle.dump(model, f)
@@ -185,3 +174,8 @@ print(f"\nModel saved to '{OUTPUT_MODEL_FILE}'")
 with open(OUTPUT_SCALER_FILE, "wb") as f:
     pickle.dump(scaler, f)
 print(f"Scaler saved to '{OUTPUT_SCALER_FILE}'")
+
+# 10. VISUALIZE
+# ------------
+print("\nGenerating visualization...")
+visualize.visualize()

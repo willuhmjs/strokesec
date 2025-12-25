@@ -80,9 +80,30 @@ def generate_persona_data(persona_name, stats, num_samples=50):
         
     return data
 
-def main():
-    """Main execution function."""
-    
+def generate_random_data(num_samples=100):
+    """
+    Generates completely random keystroke data as a fallback when no user profiles are found.
+    """
+    print(f"Generating {num_samples} samples of random noise (fallback)...")
+    data = []
+    for _ in range(num_samples):
+        row = {}
+        for i in range(REQUIRED_LENGTH):
+            dwell_key = f'k{i}_dwell'
+            flight_key = f'k{i}_flight'
+            
+            # Random hold: 50ms to 400ms
+            row[dwell_key] = np.random.uniform(0.05, 0.4)
+            # Random flight: 0ms to 500ms
+            row[flight_key] = np.random.uniform(0.0, 0.5)
+            
+        data.append(row)
+    return data
+
+def generate_imposter_data():
+    """
+    Main function to generate imposter data from existing profiles or random noise.
+    """
     # Auto-detect real user files in the data directory
     from config import DATA_DIR
     import glob
@@ -110,8 +131,8 @@ def main():
             all_data.extend(synthetic_data)
 
     if not all_data:
-        print("No data generated. Please check input files.")
-        return
+        print("No user profiles found. Using random data generation fallback.")
+        all_data = generate_random_data(num_samples=100)
 
     df = pd.DataFrame(all_data)
     
@@ -122,7 +143,8 @@ def main():
     
     df.to_csv(output_file, index=False)
     print(f"Successfully generated {len(df)} synthetic imposter records in {output_file}")
-    print(f"Columns: {len(df.columns)}")
+    if not df.empty:
+        print(f"Columns: {len(df.columns)}")
 
 if __name__ == "__main__":
-    main()
+    generate_imposter_data()

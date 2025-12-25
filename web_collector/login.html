@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Login - Keystroke Dynamics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f0f2f5;
+            color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 80vh;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+        .target-phrase-box {
+            background: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        .target-label {
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .target-phrase {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2980b9;
+            user-select: none;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+            outline: none;
+        }
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: none;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .debug-info {
+            margin-top: 30px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            width: 100%;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Secure Login</h1>
+        
+        <div id="loadingMessage" class="loading">Loading security model...</div>
+
+        <div id="loginForm" style="display: none;">
+            <div class="target-phrase-box">
+                <div class="target-label">Please type the following phrase:</div>
+                <div class="target-phrase">the quick brown fox</div>
+            </div>
+
+            <input type="text" id="inputField" placeholder="Type here and press Enter..." autocomplete="off" spellcheck="false">
+            
+            <div id="statusMessage" class="status"></div>
+            
+            <div class="debug-info">
+                <div>MSE: <span id="mseScore">-</span></div>
+                <div>Threshold: <span id="thresholdVal">-</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TARGET_PHRASE = "the quick brown fox";
+        const REQUIRED_KEYS = 20; // 19 chars + Enter
+
+        let modelData = null;
+        let pressTimes = {};
+        let rawEvents = [];
+
+        // Load the model data on startup
+        fetch('model_data.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Could not load model_data.json");
+                return response.json();
+            })
+            .then(data => {
+                modelData = data;
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('thresholdVal').textContent = modelData.threshold.toFixed(6);
+                console.log("Model loaded:", modelData);
+            })
+            .catch(err => {
+                document.getElementById('loadingMessage').textContent = "Error loading security model. Please ensure model_data.json exists.";
+                document.getElementById('loadingMessage').style.color = 'red';
+                console.error(err);
+            });
+
+        const inputField = document.getElementById('inputField');
+        const statusMessage = document.getElementById('statusMessage');
+
+        function resetAttempt() {
+            rawEvents = [];
+            pressTimes = {};
+            statusMessage.className = "status";
+            statusMessage.style.display = 'none';
+        }
+
+        inputField.addEventListener('keydown', (e) => {
+            const now = performance.now() / 1000;
+            
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                resetAttempt();
+                return;
+            }
+
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
+
+            if (!pressTimes[e.code]) {
+                pressTimes[e.code] = now;
+            }
+        });
+
+        inputField.addEventListener('keyup', (e) => {
+            const now = performance.now() / 1000;
+
+            if (e.key === 'Enter') {
+                let code = e.code;
+                // Handle NumpadEnter or missing code edge cases
+                if (!pressTimes[code]) {
+                     for (let c in pressTimes) {
+                        if (c.includes('Enter')) { code = c; break; }
+                    }
+                }
+
+                if (pressTimes[code]) {
+                    rawEvents.push({
+                        key: 'Enter', code: code,
+                        press_ts: pressTimes[code], release_ts: now
+                    });
+                    delete pressTimes[code];
+                }
+                
+                processLoginAttempt();
+                return;
+            }
+
+            if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Backspace', 'Delete'].includes(e.key)) return;
+
+            if (pressTimes[e.code]) {
+                rawEvents.push({
+                    key: e.key, code: e.code,
+                    press_ts: pressTimes[e.code], release_ts: now
+                });
+                delete pressTimes[e.code];
+            }
+        });
+
+        function processLoginAttempt() {
+            const typedText = inputField.value.trim();
+            
+            // Basic Validation
+            if (typedText !== TARGET_PHRASE) {
+                showStatus(`Incorrect phrase. Please type "${TARGET_PHRASE}"`, "error");
+                inputField.value = '';
+                resetAttempt();
+                return;
+            }
+
+            rawEvents.sort((a, b) => a.press_ts - b.press_ts);
+
+            if (rawEvents.length !== REQUIRED_KEYS) {
+                showStatus(`Timing error. Detected ${rawEvents.length} keys, expected ${REQUIRED_KEYS}. Try again smoothly.`, "error");
+                inputField.value = '';
+                resetAttempt();
+                return;
+            }
+
+            // Extract Features
+            const features = extractFeatures(rawEvents);
+            
+            // Authenticate
+            verifyUser(features);
+
+            // Reset
+            inputField.value = '';
+            resetAttempt();
+        }
+
+        function extractFeatures(events) {
+            let row = [];
+            for (let i = 0; i < REQUIRED_KEYS; i++) {
+                const curr = events[i];
+                const prev = i > 0 ? events[i-1] : null;
+
+                // 1. Hold Time
+                const hold = curr.release_ts - curr.press_ts;
+                
+                // 2. UD Flight (Press - Prev Release)
+                const ud = prev ? (curr.press_ts - prev.release_ts) : 0.0;
+                
+                // 3. DD Flight (Press - Prev Press)
+                const dd = prev ? (curr.press_ts - prev.press_ts) : 0.0;
+
+                row.push(hold, ud, dd);
+            }
+            return row;
+        }
+
+        function verifyUser(features) {
+            if (!modelData) return;
+
+            try {
+                // 1. Scale
+                const scaledFeatures = features.map((val, idx) => {
+                    return (val - modelData.scaler.mean[idx]) / modelData.scaler.scale[idx];
+                });
+
+                // 2. Predict (Autoencoder Reconstruction)
+                const reconstructed = predict(scaledFeatures);
+
+                // 3. Calculate MSE
+                let mse = 0;
+                for (let i = 0; i < scaledFeatures.length; i++) {
+                    mse += Math.pow(scaledFeatures[i] - reconstructed[i], 2);
+                }
+                mse /= scaledFeatures.length;
+
+                // 4. Compare with Threshold
+                document.getElementById('mseScore').textContent = mse.toFixed(6);
+                
+                if (mse <= modelData.threshold) {
+                    showStatus("✅ ACCESS GRANTED. Identity Verified.", "success");
+                } else {
+                    showStatus("⛔ ACCESS DENIED. Typing pattern mismatch.", "error");
+                }
+
+            } catch (e) {
+                console.error("Verification error:", e);
+                showStatus("System Error during verification.", "error");
+            }
+        }
+
+        // Simple MLP Forward Pass
+        function predict(inputVector) {
+            let activations = inputVector;
+            const weights = modelData.model.weights;
+            const biases = modelData.model.biases;
+
+            // Iterate through layers
+            for (let i = 0; i < weights.length; i++) {
+                const W = weights[i]; // Matrix [n_in, n_out]
+                const b = biases[i];  // Vector [n_out]
+                
+                // Matrix Multiplication + Bias
+                let nextActivations = new Array(b.length).fill(0);
+                
+                // W is [input_dim][output_dim] based on sklearn coefs_ structure
+                // But let's verify: sklearn coefs_ is [n_features, n_neurons]
+                
+                const inputDim = W.length;
+                const outputDim = W[0].length;
+
+                for (let col = 0; col < outputDim; col++) {
+                    let sum = 0;
+                    for (let row = 0; row < inputDim; row++) {
+                        sum += activations[row] * W[row][col];
+                    }
+                    sum += b[col];
+                    
+                    // Apply Activation (ReLU) for hidden layers
+                    // Last layer (i === weights.length - 1) is Identity
+                    if (i < weights.length - 1) {
+                        nextActivations[col] = Math.max(0, sum); // ReLU
+                    } else {
+                        nextActivations[col] = sum; // Identity
+                    }
+                }
+                activations = nextActivations;
+            }
+            return activations;
+        }
+
+        function showStatus(msg, type) {
+            statusMessage.textContent = msg;
+            statusMessage.className = `status ${type}`;
+        }
+    </script>
+</body>
+</html>

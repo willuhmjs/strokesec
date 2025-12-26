@@ -218,3 +218,25 @@
 2025-12-26 16:51:15 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
 2025-12-26 16:51:15 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
 2025-12-26 16:51:15 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 17:55:32 - [INFO] - Loaded 82 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-26 17:55:32 - [INFO] - Augmenting data... (Original: 65)
+2025-12-26 17:55:33 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-26 17:55:37 - [INFO] - Early stopping at epoch 62
+2025-12-26 17:55:37 - [INFO] - Final Threshold: 2.129795 (Mean: 0.805094, Std: 0.883134)
+2025-12-26 17:57:25 - [INFO] - Loaded 82 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-26 17:57:25 - [INFO] - Augmenting data... (Original: 65)
+2025-12-26 17:57:26 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-26 17:57:28 - [INFO] - Early stopping at epoch 70
+2025-12-26 17:57:28 - [INFO] - Final Threshold: 2.507983 (Mean: 0.854728, Std: 1.102170)
+2025-12-26 17:57:28 - [INFO] - Artifacts saved successfully.
+2025-12-26 17:57:41 - [INFO] - Generating enhanced analysis...
+2025-12-26 17:57:41 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 17:57:41 - [INFO] - Loaded 82 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 17:57:41 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 17:57:42 - [INFO] - Enhanced visualization saved to /home/will/git/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 18:01:23 - [INFO] - Loaded 82 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-26 18:01:23 - [INFO] - Augmenting data... (Original: 65)
+2025-12-26 18:01:24 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-26 18:01:26 - [INFO] - Early stopping at epoch 62
+2025-12-26 18:01:26 - [INFO] - Final Threshold: 2.483744 (Mean: 0.824852, Std: 1.105928)
+2025-12-26 18:01:26 - [INFO] - Artifacts saved successfully.

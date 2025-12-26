@@ -74,7 +74,7 @@ python3 src/visualize.py
 | `src/train.py` | Trains the Autoencoder with Fuzzy Augmentation and calculates the threshold. |
 | `src/login.py` | Loads the model and performs real-time anomaly detection. |
 | `src/config.py` | Global constants (target phrase, file paths, model params). |
-| `web_collector/` | (Optional) HTML interface for browser-based data collection. |
+| `web_collector/` | (Optional) HTML interface for browser-based data collection and testing. |
 
 ### Note on Dependencies
 

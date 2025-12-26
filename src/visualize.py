@@ -86,14 +86,14 @@ def plot_typing_patterns(all_users_df, fig, gs):
 
     # 1. Hold Time Distribution (KDE)
     ax1 = fig.add_subplot(gs[0, 0])
-    sns.kdeplot(data=all_users_df, x='Mean Hold', hue='User', fill=True, ax=ax1, palette="viridis", alpha=0.3)
+    sns.kdeplot(data=all_users_df, x='Mean Hold', hue='User', fill=True, ax=ax1, palette="viridis", alpha=0.3, common_norm=False)
     ax1.set_title("Distribution of Mean Hold Times", fontsize=14, fontweight='bold')
     ax1.set_xlabel("Seconds")
     ax1.grid(True, alpha=0.3)
 
     # 2. UD (Up-Down) Flight Time Distribution (KDE)
     ax2 = fig.add_subplot(gs[0, 1])
-    sns.kdeplot(data=all_users_df, x='Mean UD', hue='User', fill=True, ax=ax2, palette="viridis", alpha=0.3)
+    sns.kdeplot(data=all_users_df, x='Mean UD', hue='User', fill=True, ax=ax2, palette="viridis", alpha=0.3, common_norm=False)
     ax2.set_title("Distribution of Mean UD Flight Times", fontsize=14, fontweight='bold')
     ax2.set_xlabel("Seconds")
     ax2.grid(True, alpha=0.3)

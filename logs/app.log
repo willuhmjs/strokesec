@@ -138,3 +138,70 @@
 --- Phase 2: Launching Sequence Attack ---
 2025-12-26 16:26:49 - [INFO] - Saving forged data...
 2025-12-26 16:26:49 - [CRITICAL] - CRITICAL: The model is vulnerable to sequential attacks.
+2025-12-26 16:32:02 - [INFO] - Loaded 62 records from data/will_data.csv
+2025-12-26 16:32:02 - [INFO] - Augmenting data... (Original: 49)
+2025-12-26 16:32:03 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:32:05 - [INFO] - Early stopping at epoch 84
+2025-12-26 16:32:05 - [INFO] - Final Threshold: 0.857689 (Mean: 0.408812, Std: 0.299252)
+2025-12-26 16:32:05 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:32:10 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:32:10 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 16:32:10 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:32:10 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:32:10 - [INFO] - Loaded 1000 samples from Forged_keystroke (forged_keystroke_data.csv)
+2025-12-26 16:32:10 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:32:11 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:32:29 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:32:29 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:32:29 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:32:30 - [INFO] - Training LSTM-GAN for 1000 epochs...
+2025-12-26 16:33:03 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 16:33:03 - [INFO] - Saving forged data...
+2025-12-26 16:33:03 - [INFO] - PASS: The model is robust against sequential attacks.
+2025-12-26 16:33:10 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:33:10 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 16:33:10 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:33:10 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:33:10 - [INFO] - Loaded 1000 samples from Forged_keystroke (forged_keystroke_data.csv)
+2025-12-26 16:33:10 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:33:11 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:33:29 - [ERROR] - CSV file 'data/forged_keystroke_data.csv' not found.
+2025-12-26 16:33:36 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:33:36 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 16:33:36 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:33:36 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:33:36 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:33:37 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:37:05 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:37:05 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 16:37:05 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:37:05 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:37:05 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:37:06 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:37:17 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:37:17 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:37:17 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:37:18 - [INFO] - Training LSTM-GAN for 1000 epochs...
+2025-12-26 16:37:51 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 16:37:51 - [INFO] - Saving forged data...
+2025-12-26 16:37:51 - [CRITICAL] - CRITICAL: The model is vulnerable to sequential attacks.
+2025-12-26 16:37:57 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:37:57 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:37:57 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:37:58 - [INFO] - Training LSTM-GAN for 1000 epochs...
+2025-12-26 16:38:30 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 16:38:30 - [INFO] - Saving forged data...
+2025-12-26 16:38:30 - [CRITICAL] - CRITICAL: The model is vulnerable to sequential attacks.
+2025-12-26 16:39:00 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:39:00 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 16:39:00 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:39:00 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:39:00 - [INFO] - Loaded 1000 samples from Forged_keystroke (forged_keystroke_data.csv)
+2025-12-26 16:39:00 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:39:01 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.

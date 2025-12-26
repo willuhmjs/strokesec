@@ -182,6 +182,8 @@ def plot_reconstruction_error(all_users_df, fig, gs):
     if max_mse > threshold * 10:
         ax.set_yscale('log')
         ax.set_ylabel("Mean Squared Error (Log Scale)")
+        # Set a realistic lower bound to avoid squashing data due to near-zero MSEs
+        ax.set_ylim(bottom=1e-4)
         
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
     ax.grid(True, alpha=0.3)

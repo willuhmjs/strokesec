@@ -183,7 +183,9 @@ def crack_model(input_file=KEYSTROKE_DATA_FILE):
     
     # 3. Train the Cracking LSTM-GAN
     logger.info("\n--- Phase 1: Training LSTM-GAN ---")
-    generator = train_gan(X_train_seq, seq_len, input_dim, latent_dim=latent_dim, epochs=400, device=device)
+    # Increased epochs and latent_dim for a stronger attacker
+    latent_dim = 32 
+    generator = train_gan(X_train_seq, seq_len, input_dim, latent_dim=latent_dim, epochs=1000, device=device)
     
     # 4. Generate Attack Samples
     logger.info("\n--- Phase 2: Launching Sequence Attack ---")

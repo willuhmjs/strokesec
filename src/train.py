@@ -128,10 +128,11 @@ if __name__ == "__main__":
     model = train_model(X_train_scaled, X_test_scaled, input_dim)
     
     # 6. Calculate Threshold (using clean validation data)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.eval()
     with torch.no_grad():
-        X_val_tensor = torch.FloatTensor(X_test_scaled)
-        reconstructed = model(X_val_tensor).numpy()
+        X_val_tensor = torch.FloatTensor(X_test_scaled).to(device)
+        reconstructed = model(X_val_tensor).cpu().numpy()
         
     mse_scores = np.mean(np.power(X_test_scaled - reconstructed, 2), axis=1)
     mean_mse = np.mean(mse_scores)

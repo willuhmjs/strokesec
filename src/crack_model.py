@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from config import KEYSTROKE_DATA_FILE, MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
 from utils import load_artifacts
-from model import KeystrokeAutoencoder
+from logger import logger
 
 # GAN Components
 class Generator(nn.Module):
@@ -21,10 +21,10 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.model = nn.Sequential(
             nn.Linear(latent_dim, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(0.1), # Matched LeakyReLU usage
             nn.BatchNorm1d(128),
             nn.Linear(128, 256),
-            nn.ReLU(),
+            nn.LeakyReLU(0.1), # Matched LeakyReLU usage
             nn.BatchNorm1d(256),
             nn.Linear(256, output_dim)
             # No activation on output because we are generating standardized values (can be negative)
@@ -59,7 +59,7 @@ def train_gan(X_train, input_dim, latent_dim=64, epochs=300, batch_size=32, devi
     if num_samples < batch_size:
         # Ensure at least 2 samples for BatchNorm
         new_batch_size = max(2, num_samples)
-        print(f"Dataset size ({num_samples}) smaller than batch_size ({batch_size}). Adjusting to {new_batch_size}.")
+        logger.warning(f"Dataset size ({num_samples}) smaller than batch_size ({batch_size}). Adjusting to {new_batch_size}.")
         batch_size = new_batch_size
 
     generator = Generator(latent_dim, input_dim).to(device)
@@ -71,15 +71,10 @@ def train_gan(X_train, input_dim, latent_dim=64, epochs=300, batch_size=32, devi
     criterion = nn.BCELoss()
 
     dataset = TensorDataset(torch.FloatTensor(X_train))
-    # drop_last=True prevents single-sample batches which crash BatchNorm
-    # However, if dataset size == batch_size, drop_last=True keeps the one batch.
-    # If dataset size < batch_size (after adjustment), drop_last might drop it if not carefully handled.
-    # We already adjusted batch_size <= num_samples.
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
-    print(f"Training Generative Adversarial Network (GAN) for {epochs} epochs...")
+    logger.info(f"Training Generative Adversarial Network (GAN) for {epochs} epochs...")
     
-    # Initialize losses to avoid UnboundLocalError if loop doesn't run
     d_loss = torch.tensor(0.0)
     g_loss = torch.tensor(0.0)
 
@@ -129,14 +124,14 @@ def train_gan(X_train, input_dim, latent_dim=64, epochs=300, batch_size=32, devi
 
 def crack_model(input_file=KEYSTROKE_DATA_FILE):
     # 1. Load the Target Auth Model and Scaler
-    print("Loading target authentication model and artifacts...")
+    logger.info("Loading target authentication model and artifacts...")
     try:
         # Note: load_artifacts expects paths as strings or Path objects
         auth_model, scaler, threshold = load_artifacts(
             MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
         )
     except SystemExit:
-        print("Failed to load artifacts. Make sure the model is trained first (run src/train.py).")
+        logger.error("Failed to load artifacts. Make sure the model is trained first.")
         return
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -145,12 +140,11 @@ def crack_model(input_file=KEYSTROKE_DATA_FILE):
 
     # 2. Load and Prepare Data for GAN Training
     # We use the same dataset the model was trained on to train our "Cracker" GAN
-    # In a real scenario, an attacker might have intercepted these keystrokes
-    print(f"Loading data from {input_file}...")
+    logger.info(f"Loading data from {input_file}...")
     try:
         df = pd.read_csv(input_file)
     except FileNotFoundError:
-        print(f"Data file {input_file} not found.")
+        logger.error(f"Data file {input_file} not found.")
         return
 
     # Use the target model's scaler to transform data into the expected distribution
@@ -162,11 +156,11 @@ def crack_model(input_file=KEYSTROKE_DATA_FILE):
     latent_dim = 64
     
     # 3. Train the Cracking GAN
-    print("\n--- Phase 1: Training Generative Model ---")
+    logger.info("\n--- Phase 1: Training Generative Model ---")
     generator = train_gan(X_scaled, input_dim, latent_dim=latent_dim, epochs=300, device=device)
     
     # 4. Generate Attack Samples
-    print("\n--- Phase 2: Launching Attack ---")
+    logger.info("\n--- Phase 2: Launching Attack ---")
     num_attacks = 1000
     print(f"Generating {num_attacks} synthetic keystroke patterns...")
     
@@ -175,7 +169,7 @@ def crack_model(input_file=KEYSTROKE_DATA_FILE):
         fake_samples = generator(z)
 
         # Save forged data for external verification
-        print("Saving forged data...")
+        logger.info("Saving forged data...")
         fake_samples_unscaled = scaler.inverse_transform(fake_samples.cpu().numpy())
         forged_df = pd.DataFrame(fake_samples_unscaled, columns=df.columns)
         
@@ -210,11 +204,11 @@ def crack_model(input_file=KEYSTROKE_DATA_FILE):
     print("-" * 50)
     
     if success_rate > 50:
-        print("CRITICAL: The model is highly vulnerable to generative attacks.")
+        logger.critical("CRITICAL: The model is highly vulnerable to generative attacks.")
     elif success_rate > 10:
-        print("WARNING: The model shows some vulnerability to generative attacks.")
+        logger.warning("WARNING: The model shows some vulnerability to generative attacks.")
     else:
-        print("PASS: The model is relatively robust against this simple generative attack.")
+        logger.info("PASS: The model is relatively robust against this simple generative attack.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a GAN to crack the authentication model.")

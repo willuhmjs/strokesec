@@ -318,6 +318,7 @@
             let activations = inputVector;
             const weights = modelData.model.weights;
             const biases = modelData.model.biases;
+            const slope = modelData.model.leaky_relu_slope || 0.1;
 
             // Iterate through layers
             for (let i = 0; i < weights.length; i++) {
@@ -340,10 +341,11 @@
                     }
                     sum += b[col];
                     
-                    // Apply Activation (ReLU) for hidden layers
+                    // Apply Activation (LeakyReLU) for hidden layers
                     // Last layer (i === weights.length - 1) is Identity
                     if (i < weights.length - 1) {
-                        nextActivations[col] = Math.max(0, sum); // ReLU
+                        // LeakyReLU: x if x > 0 else slope * x
+                        nextActivations[col] = sum > 0 ? sum : slope * sum;
                     } else {
                         nextActivations[col] = sum; // Identity
                     }

@@ -24,12 +24,13 @@ def export_artifacts():
     
     # Iterate through named parameters to find weights and biases
     # The order depends on the definition in model.py
-    # Encoder: Linear -> BN -> ReLU -> Dropout -> Linear -> ReLU
-    # Decoder: Linear -> ReLU -> Linear
+    # Updated Architecture:
+    # Encoder: Linear -> BN -> LeakyReLU -> Dropout -> Linear -> BN -> LeakyReLU -> Dropout -> Linear -> LeakyReLU
+    # Decoder: Linear -> BN -> LeakyReLU -> Linear -> BN -> LeakyReLU -> Linear
     
     for name, param in model.named_parameters():
         if 'weight' in name:
-            if 'batch_norm' not in name: # Skip BN weights for simplicity in this basic export, or handle if frontend needs them
+            if 'batch_norm' not in name: 
                  weights.append(to_list(param.detach().numpy().T)) # Transpose for standard matrix mult convention (Input x Hidden)
         elif 'bias' in name:
              if 'batch_norm' not in name:
@@ -45,10 +46,8 @@ def export_artifacts():
         "model": {
             "weights": weights,
             "biases": biases,
-            "activation": "relu", # Hardcoded based on model.py architecture
-            # Note: This export is simplified. The frontend JS needs to match the PyTorch architecture 
-            # (Linear -> BN (skipped here) -> ReLU -> Dropout (skip) -> Linear -> ReLU ... etc)
-            # For a direct port, we might need to export BN params too.
+            "activation": "leaky_relu",
+            "leaky_relu_slope": 0.1
         }
     }
 

@@ -1,0 +1,77 @@
+2025-12-26 15:59:10 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 15:59:10 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 15:59:45 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 15:59:45 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 15:59:45 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 15:59:48 - [INFO] - Early stopping at epoch 141
+2025-12-26 15:59:48 - [INFO] - Final Threshold: 0.995155 (Mean: 0.413583, Std: 0.387715)
+2025-12-26 15:59:48 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:02:16 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:02:16 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:02:17 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:02:19 - [INFO] - Early stopping at epoch 86
+2025-12-26 16:02:19 - [INFO] - Final Threshold: 0.857987 (Mean: 0.358916, Std: 0.332714)
+2025-12-26 16:02:19 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:02:26 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:02:26 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:02:26 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:02:28 - [INFO] - Early stopping at epoch 71
+2025-12-26 16:02:28 - [INFO] - Final Threshold: 0.896934 (Mean: 0.381532, Std: 0.343601)
+2025-12-26 16:02:28 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:02:34 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:02:34 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:02:34 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:02:37 - [INFO] - Early stopping at epoch 143
+2025-12-26 16:02:37 - [INFO] - Final Threshold: 0.822520 (Mean: 0.338151, Std: 0.322913)
+2025-12-26 16:02:37 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:04:33 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:04:33 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:04:34 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:04:36 - [INFO] - Early stopping at epoch 91
+2025-12-26 16:04:36 - [INFO] - Final Threshold: 0.949587 (Mean: 0.379130, Std: 0.380304)
+2025-12-26 16:04:36 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:06:26 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:06:26 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:06:27 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:06:29 - [INFO] - Early stopping at epoch 109
+2025-12-26 16:06:29 - [INFO] - Final Threshold: 0.990865 (Mean: 0.393818, Std: 0.398031)
+2025-12-26 16:06:29 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:07:37 - [INFO] - Loaded 20 records from data/tristan_data.csv
+2025-12-26 16:07:37 - [INFO] - Augmenting data... (Original: 16)
+2025-12-26 16:07:37 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:07:38 - [INFO] - Early stopping at epoch 74
+2025-12-26 16:07:38 - [INFO] - Final Threshold: 1.817765 (Mean: 1.164393, Std: 0.435581)
+2025-12-26 16:07:38 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:08:06 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:08:06 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:08:07 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:08:08 - [INFO] - Early stopping at epoch 86
+2025-12-26 16:08:08 - [INFO] - Final Threshold: 0.955115 (Mean: 0.375603, Std: 0.386341)
+2025-12-26 16:08:08 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:08:16 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:08:16 - [INFO] - Loaded 42 samples from Will (will_data.csv)
+2025-12-26 16:08:16 - [INFO] - Loaded 33 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:08:16 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:08:16 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:08:17 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:08:59 - [INFO] - Loaded 20 records from data/tristan_data.csv
+2025-12-26 16:08:59 - [INFO] - Augmenting data... (Original: 16)
+2025-12-26 16:08:59 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:09:00 - [INFO] - Early stopping at epoch 99
+2025-12-26 16:09:00 - [INFO] - Final Threshold: 1.779114 (Mean: 1.143700, Std: 0.423609)
+2025-12-26 16:09:00 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:09:03 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:09:03 - [INFO] - Loaded 42 samples from Will (will_data.csv)
+2025-12-26 16:09:03 - [INFO] - Loaded 33 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:09:03 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:09:03 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:09:04 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:09:45 - [INFO] - Loaded 20 records from data/tristan_data.csv
+2025-12-26 16:09:45 - [INFO] - Augmenting data... (Original: 16)
+2025-12-26 16:09:45 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:09:51 - [INFO] - Loaded 20 records from data/anne_data.csv
+2025-12-26 16:09:51 - [INFO] - Augmenting data... (Original: 16)
+2025-12-26 16:09:52 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:09:52 - [INFO] - Early stopping at epoch 47
+2025-12-26 16:09:52 - [INFO] - Final Threshold: 0.937662 (Mean: 0.689239, Std: 0.165615)
+2025-12-26 16:09:52 - [INFO] - Artifacts saved successfully.

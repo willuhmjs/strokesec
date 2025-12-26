@@ -11,6 +11,7 @@ import torch
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 from config import DATA_DIR, MODEL_FILE, VISUALIZATION_FILE, SCALER_FILE, THRESHOLD_FILE
 from utils import check_columns, load_artifacts
+from logger import logger
 
 # Fix for headless servers (SSH)
 matplotlib.use('Agg')
@@ -25,7 +26,7 @@ def load_data():
     csv_files = list(DATA_DIR.glob("*_data.csv"))
     
     if not csv_files:
-        print("Warning: No data files found in data/ directory.")
+        logger.warning("No data files found in data/ directory.")
         return pd.DataFrame()
 
     frames = []
@@ -58,10 +59,10 @@ def load_data():
             df['User'] = user_name
             df['label'] = label
             frames.append(df)
-            print(f"Loaded {len(df)} samples from {user_name} ({filename})")
+            logger.info(f"Loaded {len(df)} samples from {user_name} ({filename})")
             
         except Exception as e:
-            print(f"Skipping {filename}: {e}")
+            logger.error(f"Skipping {filename}: {e}")
 
     if frames:
         all_users_df = pd.concat(frames, ignore_index=True)
@@ -102,14 +103,14 @@ def plot_reconstruction_error(all_users_df, fig, gs):
     Plots the distribution of the Autoencoder's reconstruction error (MSE) for each user.
     """
     if not MODEL_FILE.exists() or not SCALER_FILE.exists() or not THRESHOLD_FILE.exists():
-        print("Model artifacts not found. Skipping MSE plot.")
+        logger.warning("Model artifacts not found. Skipping MSE plot.")
         return
 
     # Load artifacts using shared utility (handles PyTorch loading)
     try:
         model, scaler, threshold = load_artifacts(MODEL_FILE, SCALER_FILE, THRESHOLD_FILE)
     except Exception as e:
-        print(f"Failed to load artifacts: {e}")
+        logger.error(f"Failed to load artifacts: {e}")
         return
 
     # Prepare features
@@ -126,7 +127,7 @@ def plot_reconstruction_error(all_users_df, fig, gs):
     try:
         X = all_users_df[model_features]
     except KeyError as e:
-        print(f"Feature mismatch: {e}")
+        logger.error(f"Feature mismatch: {e}")
         return
 
     # Scale features
@@ -134,11 +135,12 @@ def plot_reconstruction_error(all_users_df, fig, gs):
         # Transform using values to avoid feature name mismatch warnings if scaler was fitted on numpy
         X_scaled = scaler.transform(X.values)
     except Exception as e:
-        print(f"Error scaling data for visualization: {e}")
+        logger.error(f"Error scaling data for visualization: {e}")
         return
 
     # Reconstruct and Calculate MSE (PyTorch)
     input_tensor = torch.FloatTensor(X_scaled)
+    model.eval() # Ensure eval mode
     with torch.no_grad():
         reconstructed_tensor = model(input_tensor)
     
@@ -186,11 +188,11 @@ def plot_reconstruction_error(all_users_df, fig, gs):
 
 def visualize(output=VISUALIZATION_FILE):
     """Main visualization function."""
-    print("Generating enhanced analysis...")
+    logger.info("Generating enhanced analysis...")
     
     all_users_df = load_data()
     if all_users_df.empty:
-        print("No user data available to visualize.")
+        logger.warning("No user data available to visualize.")
         return
 
     # Set up the visualization style
@@ -214,7 +216,7 @@ def visualize(output=VISUALIZATION_FILE):
 
     plt.tight_layout(rect=[0, 0.05, 1, 1]) # Make room for footer
     plt.savefig(output, dpi=300)
-    print(f"Enhanced visualization saved to {output}. Download to view.")
+    logger.info(f"Enhanced visualization saved to {output}. Download to view.")
 
 if __name__ == "__main__":
     visualize()

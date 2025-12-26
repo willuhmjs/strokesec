@@ -16,12 +16,13 @@ from sklearn.preprocessing import StandardScaler
 from config import KEYSTROKE_DATA_FILE, MODEL_FILE, SCALER_FILE, THRESHOLD_FILE
 from utils import augment_data
 from model import KeystrokeAutoencoder
+from logger import logger
 
 # Training Configuration
 BATCH_SIZE = 32
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 300
-PATIENCE = 20  # For early stopping
+PATIENCE = 30  # Increased patience for deeper model
 
 def train_model(X_train, X_val, input_dim):
     # Prepare DataLoaders
@@ -38,11 +39,16 @@ def train_model(X_train, X_val, input_dim):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
     
+    # Scheduler: Reduce LR if validation loss stops improving
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', factor=0.5, patience=10
+    )
+    
     best_val_loss = float('inf')
     patience_counter = 0
     best_model_state = None
     
-    print(f"Device: {device} | Input Dim: {input_dim}")
+    logger.info(f"Device: {device} | Input Dim: {input_dim}")
     print("-" * 60)
 
     for epoch in range(MAX_EPOCHS):
@@ -73,6 +79,9 @@ def train_model(X_train, X_val, input_dim):
         
         val_loss /= len(val_loader.dataset)
 
+        # Step Scheduler
+        scheduler.step(val_loss)
+
         # --- Early Stopping Logic ---
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -85,7 +94,7 @@ def train_model(X_train, X_val, input_dim):
             print(f"Epoch {epoch:03d}: Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
             
         if patience_counter >= PATIENCE:
-            print(f"Early stopping at epoch {epoch}")
+            logger.info(f"Early stopping at epoch {epoch}")
             break
 
     # Load best weights
@@ -103,8 +112,9 @@ if __name__ == "__main__":
     # 1. Load Data
     try:
         df = pd.read_csv(args.input_file)
+        logger.info(f"Loaded {len(df)} records from {args.input_file}")
     except FileNotFoundError:
-        print("Data file not found.")
+        logger.error("Data file not found.")
         sys.exit(1)
         
     X_real = df.values
@@ -113,7 +123,7 @@ if __name__ == "__main__":
     X_train_raw, X_test_raw = train_test_split(X_real, test_size=0.2, random_state=42)
     
     # 3. Augment (Only Train Data)
-    print(f"Augmenting data... (Original: {len(X_train_raw)})")
+    logger.info(f"Augmenting data... (Original: {len(X_train_raw)})")
     # Note: augment_data returns a dataframe, we convert to numpy
     X_train_aug_df = augment_data(pd.DataFrame(X_train_raw, columns=df.columns))
     X_train_aug = X_train_aug_df.values
@@ -141,7 +151,7 @@ if __name__ == "__main__":
     # Strict threshold: Mean + 1.5 StdDev (Tweak multiplier as needed)
     threshold = mean_mse + 1.5 * std_mse
     
-    print(f"\nFinal Threshold: {threshold:.6f} (Mean: {mean_mse:.6f}, Std: {std_mse:.6f})")
+    logger.info(f"Final Threshold: {threshold:.6f} (Mean: {mean_mse:.6f}, Std: {std_mse:.6f})")
 
     # 7. Save Artifacts
     # Save State Dict for PyTorch
@@ -155,4 +165,4 @@ if __name__ == "__main__":
     with open(args.threshold, "wb") as f:
         pickle.dump(threshold, f)
 
-    print("Artifacts saved successfully.")
+    logger.info("Artifacts saved successfully.")

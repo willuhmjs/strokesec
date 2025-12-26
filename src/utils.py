@@ -69,6 +69,36 @@ def augment_data(X, num_copies=15, noise_scale=0.05):
             
     return pd.DataFrame(augmented_data, columns=X.columns)
 
+def select_user_profile(keystroke_file, imposter_file, data_dir):
+    """
+    Interactive helper to select which user profile to record data for.
+    """
+    print("\n" + "="*30)
+    print("   KEYSTROKE DATA COLLECTOR   ")
+    print("="*30)
+    print("Who is typing right now?")
+    print(f"1. Primary User -> {keystroke_file.name}")
+    print(f"2. Imposter -> {imposter_file.name}")
+    print("3. Custom Name (Creates new synced data file)")
+
+    choice = input("\nSelect Option (1-3): ")
+
+    if choice == '1':
+        return keystroke_file
+    if choice == '2':
+        return imposter_file
+    if choice == '3':
+        name = input("Enter your name (e.g. 'alice'): ").strip().lower()
+        # Sanitize filename simple check
+        if not name.isalnum():
+             print("Invalid name. Using 'custom_user'")
+             name = "custom_user"
+        return data_dir / f"{name}_data.csv"
+    
+    # Fallback/Default
+    print("Invalid choice. Defaulting to keystroke_data.csv")
+    return keystroke_file
+
 def check_columns(df):
     """
     Validates and attempts to fix column headers for keystroke data.

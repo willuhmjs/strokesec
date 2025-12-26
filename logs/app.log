@@ -75,3 +75,57 @@
 2025-12-26 16:09:52 - [INFO] - Early stopping at epoch 47
 2025-12-26 16:09:52 - [INFO] - Final Threshold: 0.937662 (Mean: 0.689239, Std: 0.165615)
 2025-12-26 16:09:52 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:15:35 - [INFO] - Loaded 20 records from data/tristan_data.csv
+2025-12-26 16:15:35 - [INFO] - Augmenting data... (Original: 16)
+2025-12-26 16:15:35 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:15:36 - [INFO] - Early stopping at epoch 83
+2025-12-26 16:15:36 - [INFO] - Final Threshold: 1.701463 (Mean: 1.170290, Std: 0.354115)
+2025-12-26 16:15:36 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:15:46 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:15:46 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:15:47 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:15:48 - [INFO] - Early stopping at epoch 80
+2025-12-26 16:15:48 - [INFO] - Final Threshold: 0.807999 (Mean: 0.337432, Std: 0.313711)
+2025-12-26 16:15:48 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:15:55 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:15:55 - [INFO] - Loaded 42 samples from Will (will_data.csv)
+2025-12-26 16:15:55 - [INFO] - Loaded 33 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:15:55 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:15:55 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:15:56 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:17:58 - [INFO] - Loaded 42 records from data/will_data.csv
+2025-12-26 16:17:58 - [INFO] - Augmenting data... (Original: 33)
+2025-12-26 16:17:58 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 16:17:59 - [INFO] - Early stopping at epoch 50
+2025-12-26 16:17:59 - [INFO] - Final Threshold: 0.975331 (Mean: 0.393622, Std: 0.387806)
+2025-12-26 16:17:59 - [INFO] - Artifacts saved successfully.
+2025-12-26 16:18:09 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:18:09 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:18:09 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:18:09 - [INFO] - Training LSTM-GAN for 400 epochs...
+2025-12-26 16:19:56 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:19:57 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:19:57 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:19:57 - [INFO] - Training LSTM-GAN for 400 epochs...
+2025-12-26 16:20:10 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 16:20:10 - [INFO] - Saving forged data...
+2025-12-26 16:20:10 - [INFO] - PASS: The model is robust against sequential attacks.
+2025-12-26 16:21:05 - [INFO] - Generating enhanced analysis...
+2025-12-26 16:21:05 - [INFO] - Loaded 42 samples from Will (will_data.csv)
+2025-12-26 16:21:05 - [INFO] - Loaded 33 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 16:21:05 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 16:21:05 - [INFO] - Loaded 1000 samples from Forged_keystroke (forged_keystroke_data.csv)
+2025-12-26 16:21:05 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 16:21:05 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 16:21:36 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 16:21:36 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 16:21:36 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 16:21:37 - [INFO] - Training LSTM-GAN for 400 epochs...
+2025-12-26 16:21:50 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 16:21:50 - [INFO] - Saving forged data...
+2025-12-26 16:21:50 - [INFO] - PASS: The model is robust against sequential attacks.

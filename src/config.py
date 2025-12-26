@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Data Configuration
 TARGET_PHRASE = "the quick brown fox"
-REQUIRED_LENGTH = 20  # 19 chars + 1 enter
+REQUIRED_LENGTH = len(TARGET_PHRASE) + 1  # Phrase chars + 1 enter
 
 # File Paths
 # Use pathlib for more robust cross-platform path handling

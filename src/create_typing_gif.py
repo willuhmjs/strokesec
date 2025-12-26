@@ -5,10 +5,15 @@ import matplotlib.animation as animation
 from pathlib import Path
 import glob
 
-# Configuration
-DATA_DIR = Path("data")
+import sys
+import os
+
+# Add src to python path to import config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from config import DATA_DIR, TARGET_PHRASE, REQUIRED_LENGTH
+
 OUTPUT_GIF = DATA_DIR / "typing_race.gif"
-TARGET_PHRASE = "the quick brown fox"
 # The phrase + enter = 20 keys usually. 
 # We will visualize the characters of the phrase. 
 # k0 corresponds to 't', k1 to 'h', etc.
@@ -66,7 +71,7 @@ def reconstruct_timeline(profile):
     # Note: k19 is usually Enter, which we might visualize as a symbol or ignore.
     chars = list(TARGET_PHRASE) + ["↵"] 
     
-    for i in range(20): # 0 to 19
+    for i in range(REQUIRED_LENGTH): # 0 to REQUIRED_LENGTH-1
         prefix = f"k{i}"
         
         hold_col = f"{prefix}_hold"
@@ -121,7 +126,7 @@ def create_animation(user_profiles):
     ax.set_yticks(range(len(users)))
     ax.set_yticklabels(users, fontsize=12, fontweight='bold')
     ax.set_xlabel("Time (seconds)")
-    ax.set_title("Keystroke Dynamics Race: 'the quick brown fox'", fontsize=14)
+    ax.set_title(f"Keystroke Dynamics Race: '{TARGET_PHRASE}'", fontsize=14)
     ax.grid(True, axis='x', alpha=0.3)
     
     # Containers for the text objects

@@ -218,3 +218,38 @@
 2025-12-26 16:51:15 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
 2025-12-26 16:51:15 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
 2025-12-26 16:51:15 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 17:36:37 - [INFO] - Loading target authentication model and artifacts...
+2025-12-26 17:36:37 - [INFO] - Loading data from /Users/will/Development/strokesec/data/keystroke_data.csv...
+2025-12-26 17:36:37 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-26 17:36:38 - [INFO] - Training LSTM-GAN for 1000 epochs...
+2025-12-26 17:37:12 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-26 17:37:12 - [INFO] - Saving forged data...
+2025-12-26 17:37:12 - [INFO] - PASS: The model is robust against sequential attacks.
+2025-12-26 17:44:25 - [INFO] - Loaded 62 records from data/will_data.csv
+2025-12-26 17:44:25 - [INFO] - Augmenting data... (Original: 49)
+2025-12-26 17:44:26 - [INFO] - Device: cpu | Input Dim: 60
+2025-12-26 17:44:29 - [INFO] - Early stopping at epoch 97
+2025-12-26 17:44:29 - [INFO] - Final Threshold: 0.882793 (Mean: 0.415009, Std: 0.311856)
+2025-12-26 17:44:29 - [INFO] - Artifacts saved successfully.
+2025-12-26 17:44:56 - [INFO] - Generating enhanced analysis...
+2025-12-26 17:44:56 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 17:44:56 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 17:44:56 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 17:44:56 - [INFO] - Loaded 1000 samples from Fakewill (Fakewill_data.csv)
+2025-12-26 17:44:56 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 17:44:57 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 17:45:57 - [INFO] - Generating enhanced analysis...
+2025-12-26 17:45:57 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 17:45:57 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 17:45:57 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 17:45:57 - [INFO] - Loaded 1000 samples from Fakewill (Fakewill_data.csv)
+2025-12-26 17:45:57 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 17:45:58 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.
+2025-12-26 17:46:12 - [INFO] - Generating enhanced analysis...
+2025-12-26 17:46:12 - [INFO] - Loaded 62 samples from Will (will_data.csv)
+2025-12-26 17:46:12 - [INFO] - Loaded 62 samples from Owner (Training) (keystroke_data.csv)
+2025-12-26 17:46:12 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-26 17:46:12 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-26 17:46:13 - [INFO] - Enhanced visualization saved to /Users/will/Development/strokesec/data/typing_pattern.png. Download to view.

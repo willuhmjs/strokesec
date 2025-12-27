@@ -246,3 +246,40 @@
 2025-12-26 23:00:21 - [INFO] - Early stopping at epoch 61
 2025-12-26 23:00:21 - [INFO] - Final Threshold: 0.795717 (Mean: 0.467004, Std: 0.219142)
 2025-12-26 23:00:21 - [INFO] - Artifacts saved successfully.
+2025-12-27 03:33:00 - [INFO] - Loaded 111 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-27 03:33:00 - [INFO] - Augmenting data... (Original: 88)
+2025-12-27 03:33:02 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-27 03:33:08 - [INFO] - Early stopping at epoch 113
+2025-12-27 03:33:08 - [INFO] - Final Threshold: 0.707343 (Mean: 0.360813, Std: 0.231020)
+2025-12-27 03:33:08 - [INFO] - Artifacts saved successfully.
+2025-12-27 03:33:15 - [INFO] - Generating enhanced analysis...
+2025-12-27 03:33:15 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-27 03:33:15 - [INFO] - Loaded 111 samples from Owner (Training) (keystroke_data.csv)
+2025-12-27 03:33:15 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-27 03:33:16 - [INFO] - Enhanced visualization saved to /home/will/git/strokesec/data/typing_pattern.png. Download to view.
+2025-12-27 03:33:42 - [INFO] - Loading target authentication model and artifacts...
+2025-12-27 03:33:42 - [INFO] - Loading data from /home/will/git/strokesec/data/keystroke_data.csv...
+2025-12-27 03:33:42 - [INFO] - 
+--- Phase 1: Training LSTM-GAN ---
+2025-12-27 03:33:43 - [INFO] - Training LSTM-GAN for 1000 epochs...
+2025-12-27 03:33:53 - [INFO] - 
+--- Phase 2: Launching Sequence Attack ---
+2025-12-27 03:33:53 - [INFO] - Saving forged data...
+2025-12-27 03:33:53 - [WARNING] - WARNING: The model shows some vulnerability.
+2025-12-27 03:34:11 - [INFO] - Generating enhanced analysis...
+2025-12-27 03:34:11 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-27 03:34:11 - [INFO] - Loaded 111 samples from Owner (Training) (keystroke_data.csv)
+2025-12-27 03:34:11 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-27 03:34:11 - [INFO] - Loaded 1000 samples from Forged_keystroke (forged_keystroke_data.csv)
+2025-12-27 03:34:12 - [INFO] - Enhanced visualization saved to /home/will/git/strokesec/data/typing_pattern.png. Download to view.
+2025-12-27 03:35:36 - [INFO] - Loaded 111 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-27 03:35:36 - [INFO] - Augmenting data... (Original: 88)
+2025-12-27 03:35:37 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-27 03:35:40 - [INFO] - Early stopping at epoch 79
+2025-12-27 03:35:40 - [INFO] - Final Threshold: 0.793834 (Mean: 0.380760, Std: 0.275382)
+2025-12-27 03:35:40 - [INFO] - Artifacts saved successfully.
+2025-12-27 03:35:45 - [INFO] - Generating enhanced analysis...
+2025-12-27 03:35:45 - [INFO] - Loaded 20 samples from Tristan (tristan_data.csv)
+2025-12-27 03:35:45 - [INFO] - Loaded 111 samples from Owner (Training) (keystroke_data.csv)
+2025-12-27 03:35:45 - [INFO] - Loaded 20 samples from Anne (anne_data.csv)
+2025-12-27 03:35:46 - [INFO] - Enhanced visualization saved to /home/will/git/strokesec/data/typing_pattern.png. Download to view.

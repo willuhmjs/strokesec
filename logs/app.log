@@ -240,3 +240,9 @@
 2025-12-26 18:01:26 - [INFO] - Early stopping at epoch 62
 2025-12-26 18:01:26 - [INFO] - Final Threshold: 2.483744 (Mean: 0.824852, Std: 1.105928)
 2025-12-26 18:01:26 - [INFO] - Artifacts saved successfully.
+2025-12-26 23:00:16 - [INFO] - Loaded 89 records from /home/will/git/strokesec/data/keystroke_data.csv
+2025-12-26 23:00:16 - [INFO] - Augmenting data... (Original: 71)
+2025-12-26 23:00:18 - [INFO] - Device: cuda | Input Dim: 60
+2025-12-26 23:00:21 - [INFO] - Early stopping at epoch 61
+2025-12-26 23:00:21 - [INFO] - Final Threshold: 0.795717 (Mean: 0.467004, Std: 0.219142)
+2025-12-26 23:00:21 - [INFO] - Artifacts saved successfully.
